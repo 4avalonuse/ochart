@@ -166,7 +166,7 @@
     };
 
     // Inicializa tema
-    const currentTheme = initTheme();
+    initTheme();
 
     // =========================
     // Utilitários
@@ -190,7 +190,7 @@
     }
 
     // =========================
-    // NOVO BLOCO: Resiliência (PHP -> JSON estático -> Cache local)
+    // Resiliência (PHP -> JSON estático -> Cache local)
     // =========================
     const QS = new URLSearchParams(location.search);
     const STATIC_MODE =
@@ -198,33 +198,36 @@
       location.protocol === 'file:' ||
       QS.get('static') === '1';
 
+    // >>> MAPA ATUALIZADO (aponta para api/cache/*.json)
     const STATIC_MAP = {
-      '1h':  './assets/data/BTC-USD_1h.json',
-      '1d':  './assets/data/BTC-USD_1d.json',
-      '1w':  './assets/data/BTC-USD_1w.json',
-      '1mo': './assets/data/BTC-USD_1mo.json'
+      '1h':  './api/cache/BTC-USD_60m_3mo.json',
+      '1d':  './api/cache/BTC-USD_1d_max.json',
+      '1w':  './api/cache/BTC-USD_1wk_max.json',
+      '1mo': './api/cache/BTC-USD_1mo_max.json'
     };
     const staticUrlFor = (tf) => QS.get('file') || STATIC_MAP[tf] || STATIC_MAP['1d'];
 
-    const cacheKey = (tf) => `ochart:lastPayload:BTC-USD:${tf}`;
+    const cacheKey  = (tf) => `ochart:lastPayload:BTC-USD:${tf}`;
     const saveCache = (tf, payload) => { try { localStorage.setItem(cacheKey(tf), JSON.stringify(payload)); } catch(_){} };
-    const readCache = (tf) => {
-      try { const raw = localStorage.getItem(cacheKey(tf)); return raw ? JSON.parse(raw) : null; }
-      catch { return null; }
-    };
+    const readCache = (tf) => { try { const r = localStorage.getItem(cacheKey(tf)); return r ? JSON.parse(r) : null; } catch { return null; } };
 
     async function fetchJSON(url) {
-      const res = await fetch(url, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+      const res  = await fetch(url, { headers:{ 'Accept':'application/json' }, cache:'no-store' });
       const text = await res.text();
       let json;
-      try {
-        json = text ? JSON.parse(text) : null;
-      } catch {
-        throw new Error(`JSON malformado em ${url}`);
-      }
+      try { json = text ? JSON.parse(text) : null; }
+      catch { throw new Error(`JSON malformado em ${url}`); }
       if (!res.ok) throw new Error((json && (json.message || json.error)) || `HTTP ${res.status} em ${url}`);
       if (!json || typeof json !== 'object') throw new Error(`Payload vazio em ${url}`);
       return { json, headers: res.headers };
+    }
+
+    async function fetchFromStatic(tf) {
+      const url = staticUrlFor(tf);
+      const { json } = await fetchJSON(url);
+      console.info('%cSTATIC%c ' + url, 'background:#16a34a;color:#fff;padding:2px 6px;border-radius:4px', 'color:inherit');
+      json.meta = { ...(json.meta||{}), source:'static', url };
+      return json;
     }
 
     async function fetchFromPHP(tf) {
@@ -235,19 +238,10 @@
       const { json, headers } = await fetchJSON(url);
       const xCache = (headers.get('X-Cache') || 'API').toUpperCase();
       console.info(`%c${xCache}%c via PHP • tf=${tf}`, 'background:#2563eb;color:#fff;padding:2px 6px;border-radius:4px', 'color:inherit');
-      json.meta = { ...(json.meta||{}), source: 'php' };
+      json.meta = { ...(json.meta||{}), source:'php' };
       return json;
     }
 
-    async function fetchFromStatic(tf) {
-      const url = staticUrlFor(tf);
-      const { json } = await fetchJSON(url);
-      console.info('%cSTATIC%c ' + url, 'background:#16a34a;color:#fff;padding:2px 6px;border-radius:4px', 'color:inherit');
-      json.meta = { ...(json.meta||{}), source: 'static', url };
-      return json;
-    }
-
-    // ===== SUBSTITUI a fetchSeries original =====
     async function fetchSeries(tf='1d'){
       const preferStatic = STATIC_MODE;
       const errors = [];
@@ -263,7 +257,7 @@
       const cached = readCache(tf);
       if (cached && Array.isArray(cached.data) && cached.data.length) {
         console.warn('Usando cache local (último sucesso).');
-        cached.meta = { ...(cached.meta||{}), source: 'cache' };
+        cached.meta = { ...(cached.meta||{}), source:'cache' };
         return cached;
       }
 
@@ -292,27 +286,20 @@
 
     function render(rows){
       if(!engine){
-        // usa o endpoint plural (consistente com drawing-tools)
         engine = new ChartEngine($('#ch'), { bundlesEndpoint: './api/bundles.php' });
-
-        // Inicializa ferramentas de desenho
         drawingTools = new DrawingTools(engine);
         drawingTools.init();
-
-        // Dock do toolbar dentro da área do gráfico
         const shell = document.querySelector('.chart-shell');
         const tb = document.getElementById('drawing-toolbar');
         if (shell && tb && tb.parentElement !== shell) shell.appendChild(tb);
       }
       engine.create(rows, { type: currentType, scale: currentScale });
 
-      // Aplica tema atual
       const theme = document.documentElement.getAttribute('data-theme');
       if (theme) updateChartTheme(theme);
 
       currentRows = rows.slice();
 
-      // KPIs
       const last = rows[rows.length-1];
       $('#k-close').textContent = formatPrice(last?.c);
       const highs = rows.map(r=>r.h).filter(Number.isFinite);
@@ -403,12 +390,6 @@
 
     // Inicializa
     sync(document.getElementById('sel-tf').value);
-
-    // Dicas para bundles via console (se backend disponível):
-    // engine.saveBundle({ id:'meu-bundle', name:'Setup', meta:{note:'teste'} })
-    // engine.listBundles()
-    // engine.loadBundle('meu-bundle')
-    // engine.deleteBundle('meu-bundle')
   </script>
 </body>
 </html>
