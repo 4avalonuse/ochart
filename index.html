@@ -16,53 +16,10 @@
   <script src="./libs/chartjs-plugin-zoom.min.js"></script>
   <script src="./libs/chartjs-plugin-annotation.min.js"></script>
 
-  <!-- Polimento visual padrão do Chart.js (IIFE) - mantém caminho existente -->
+  <!-- Polimento visual padrão do Chart.js (IIFE) -->
   <script src="./js/content.js"></script>
 
-  <style>
-    /* Transição suave para mudança de tema */
-    * {
-      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-    }
-    
-    body{font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:20px; background:var(--theme-surface, #f8fafc)}
-    .box{border:1px solid var(--theme-border, #e5e7eb); border-radius:10px; padding:12px; background:var(--theme-surface-alt, #fff); box-shadow:0 1px 3px rgba(0,0,0,.04)}
-    .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-    .muted{color:var(--theme-text-muted, #6b7280); font-size:12px}
-    .big{font-size:20px; font-weight:600; color:var(--theme-text, #111827)}
-    #dev-hud-root{position:fixed; left:0; right:0; bottom:0; z-index:40}
-    .inline{display:inline-flex; gap:6px; align-items:center}
-    button, select{cursor:pointer; background:var(--theme-surface-alt, #fff); color:var(--theme-text, #111827); border:1px solid var(--theme-border, #e5e7eb); padding:6px 10px; border-radius:6px}
-    select{padding:4px 8px}
-    .spacer{flex:1 1 auto}
-    .seg{display:inline-flex; border:1px solid var(--theme-border, #d1d5db); border-radius:10px; overflow:hidden}
-    .seg button{padding:6px 10px; background:var(--theme-surface-alt, #fff); border:0; border-radius:0}
-    .seg button.active{background:var(--theme-button-active, #111827); color:var(--theme-surface, #fff)}
-    .badge{font-size:12px; color:var(--theme-text-muted, #374151); background:var(--theme-border, #e5e7eb); padding:2px 6px; border-radius:6px}
-    /* Adiciona prefixo de dólar para os valores */
-    .price-value:before { content: "$"; }
-    
-    /* Tema dark específico */
-    [data-theme="dark"] {
-      --theme-surface: #0f111a;
-      --theme-surface-alt: #1a1d2e;
-      --theme-border: #2a2d3a;
-      --theme-text: #e4e4e7;
-      --theme-text-muted: #9ca3af;
-      --theme-button-active: #3b82f6;
-    }
-    
-    /* Tema light específico */
-    [data-theme="light"] {
-      --theme-surface: #ffffff;
-      --theme-surface-alt: #f8fafc;
-      --theme-border: #e5e7eb;
-      --theme-text: #111827;
-      --theme-text-muted: #6b7280;
-      --theme-button-active: #111827;
-    }
-  </style>
-  <!-- Mantém seu CSS no caminho atual -->
+  <!-- Estilos principais do app -->
   <link rel="stylesheet" href="./assets/app.css">
 </head>
 <body class="ui-surface">
@@ -101,13 +58,16 @@
 
     <div class="spacer"></div>
 
-    <button id="btn-table">Tabela</button>
-    <button id="btn-sync">Sync</button>
+    <button id="btn-table">📊 Tabela</button>
+    <button id="btn-sync">🔄 Sync</button>
+    <button id="btn-theme"><span>🌙</span> Dark</button>
     <span id="status" class="muted">—</span>
   </section>
 
   <section class="box" style="height:420px; margin-top:12px">
-    <canvas id="ch"></canvas>
+    <div class="chart-shell">
+      <canvas id="ch"></canvas>
+    </div>
   </section>
 
   <section class="box row" style="margin-top:12px">
@@ -124,12 +84,13 @@
     import { sanitizeLine } from './src/core/sanitizer.js';
     import { OffsetWindow } from './src/ui/offset-window.js';
     import { TableModal } from './src/ui/table-modal.js';
-    import { themeManager } from './src/ui/theme-manager.js';
+    import { DrawingTools } from './src/ui/drawing-tools.js';
 
     mountHUD(document.getElementById('dev-hud-root'));
 
     const $ = (sel)=> document.querySelector(sel);
     let engine = null;
+    let drawingTools = null;
     let ow = null;
     let fullRows = [];
     let currentRows = [];
@@ -137,21 +98,80 @@
     let currentType  = 'line';
     const tableModal = new TableModal();
 
-    // Inicializa o gerenciador de temas
-    themeManager.init();
-    themeManager.createThemeToggle();
-    
-    // Callback quando o tema muda
-    themeManager.on('onThemeChange', (theme) => {
-      pushLog({ level:'info', msg:'theme_change', ts: Date.now(), data:{ theme }});
-      // Se o gráfico existir, recria com novo tema
-      if (engine && currentRows.length > 0) {
-        render(currentRows);
+    // =========================
+    // Tema
+    // =========================
+    const initTheme = () => {
+      const saved = localStorage.getItem('ochart-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = saved || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+      const btnTheme = $('#btn-theme');
+      if (btnTheme) {
+        btnTheme.innerHTML = theme === 'dark'
+          ? '<span>☀️</span> Light'
+          : '<span>🌙</span> Dark';
       }
-    });
+      return theme;
+    };
 
-    // Função para formatar valores em dólares sem decimais
-    function formatPrice(value) {
+    const toggleTheme = () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('ochart-theme', next);
+      const btnTheme = $('#btn-theme');
+      if (btnTheme) {
+        btnTheme.innerHTML = next === 'dark'
+          ? '<span>☀️</span> Light'
+          : '<span>🌙</span> Dark';
+      }
+      pushLog({ level:'info', msg:'theme_change', ts: Date.now(), data:{ theme: next }});
+      if (engine && engine.chart) updateChartTheme(next);
+    };
+
+    const updateChartTheme = (theme) => {
+      if (!engine || !engine.chart) return;
+      const isDark = theme === 'dark';
+      const chart = engine.chart;
+      const opts = chart.options;
+      const colors = {
+        grid: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)',
+        text: isDark ? '#9ca3af' : '#6b7280',
+        textTitle: isDark ? '#e4e4e7' : '#111827',
+        tooltip: {
+          bg: isDark ? 'rgba(26, 29, 46, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          border: isDark ? '#2a2d3a' : '#e5e7eb',
+          text: isDark ? '#e4e4e7' : '#111827',
+          textMuted: isDark ? '#9ca3af' : '#6b7280'
+        }
+      };
+      if (opts.scales?.x?.grid) opts.scales.x.grid.color = colors.grid;
+      if (opts.scales?.y?.grid) opts.scales.y.grid.color = colors.grid;
+      if (opts.scales?.x?.ticks) opts.scales.x.ticks.color = colors.text;
+      if (opts.scales?.y?.ticks) opts.scales.y.ticks.color = colors.text;
+      if (opts.plugins?.tooltip) {
+        opts.plugins.tooltip.backgroundColor = colors.tooltip.bg;
+        opts.plugins.tooltip.borderColor = colors.tooltip.border;
+        opts.plugins.tooltip.borderWidth = 1;
+        opts.plugins.tooltip.titleColor = colors.tooltip.text;
+        opts.plugins.tooltip.bodyColor = colors.tooltip.textMuted;
+        opts.plugins.tooltip.padding = 10;
+        opts.plugins.tooltip.cornerRadius = 8;
+      }
+      if (opts.plugins?.legend?.labels) {
+        opts.plugins.legend.labels.color = colors.text;
+      }
+      chart.update('none');
+    };
+
+    // Inicializa tema
+    const currentTheme = initTheme();
+
+    // =========================
+    // Utilitários
+    // =========================
+    function formatPrice(value){
       if (!Number.isFinite(value)) return '—';
       return Math.round(value).toLocaleString('en-US');
     }
@@ -169,100 +189,134 @@
       return 'max';
     }
 
-    async function fetchSeries(tf='1d'){
-      const interval = mapInterval(tf);
-      const range = requestRange(tf);
-      const pos = (currentScale === 'logarithmic') ? '1' : '0';
-      const url = `./api/yahoo.php?symbol=BTC-USD&interval=${encodeURIComponent(interval)}&range=${encodeURIComponent(range)}&sanitized=1&pos=${pos}`;
-      const res = await fetch(url, { headers: { 'Accept':'application/json' }, cache:'no-store' });
+    // =========================
+    // NOVO BLOCO: Resiliência (PHP -> JSON estático -> Cache local)
+    // =========================
+    const QS = new URLSearchParams(location.search);
+    const STATIC_MODE =
+      location.hostname.endsWith('github.io') ||
+      location.protocol === 'file:' ||
+      QS.get('static') === '1';
 
-      const xCache = (res.headers.get('X-Cache') || 'UNKNOWN').toUpperCase();
-      const xAge   = +(res.headers.get('X-Cache-Age') || 0);
-      const xTtl   = +(res.headers.get('X-Cache-TTL') || 0);
-      const xAdj   = (res.headers.get('X-Range-Adjusted') || '0') === '1';
-      const xInt   = res.headers.get('X-Interval') || interval;
-      const xRng   = res.headers.get('X-Range')    || range;
-      const xSan   = res.headers.get('X-Sanitized') || '0';
+    const STATIC_MAP = {
+      '1h':  './assets/data/BTC-USD_1h.json',
+      '1d':  './assets/data/BTC-USD_1d.json',
+      '1w':  './assets/data/BTC-USD_1w.json',
+      '1mo': './assets/data/BTC-USD_1mo.json'
+    };
+    const staticUrlFor = (tf) => QS.get('file') || STATIC_MAP[tf] || STATIC_MAP['1d'];
 
-      const style  = xCache==='HIT' ? 'background:#16a34a;color:#fff;padding:2px 6px;border-radius:4px'
-                    : xCache==='MISS' ? 'background:#2563eb;color:#fff;padding:2px 6px;border-radius:4px'
-                    : xCache==='STALE'? 'background:#d97706;color:#fff;padding:2px 6px;border-radius:4px'
-                    : xCache==='BYPASS'? 'background:#0ea5e9;color:#fff;padding:2px 6px;border-radius:4px'
-                    : 'background:#6b7280;color:#fff;padding:2px 6px;border-radius:4px';
-      const fmt = s => !s||s<0 ? '0s' : (Math.floor(s/3600)? `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m` : `${Math.floor((s%3600)/60)}m ${Math.floor(s%60)}s`);
-      console.info(`%c${xCache}%c  interval=${xInt} • range=${xRng} • age=${fmt(xAge)} • ttl=${fmt(xTtl)}${xAdj?' • adjusted':''} • sanitized=${xSan}`, style,'color:inherit');
-      pushLog({ level:'info', msg:'yahoo_cache', ts: Date.now(), data:{ cache:xCache, interval:xInt, range:xRng, age_s:xAge, ttl_s:xTtl, adjusted:xAdj, sanitized:xSan==='1' }});
+    const cacheKey = (tf) => `ochart:lastPayload:BTC-USD:${tf}`;
+    const saveCache = (tf, payload) => { try { localStorage.setItem(cacheKey(tf), JSON.stringify(payload)); } catch(_){} };
+    const readCache = (tf) => {
+      try { const raw = localStorage.getItem(cacheKey(tf)); return raw ? JSON.parse(raw) : null; }
+      catch { return null; }
+    };
 
+    async function fetchJSON(url) {
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
       const text = await res.text();
-      let payload = null;
+      let json;
       try {
-        payload = text ? JSON.parse(text) : null;
-      } catch (e) {
-        console.error('Bad JSON from backend:', text?.slice(0, 400));
-        pushLog({ level:'error', msg:'backend_bad_json', ts: Date.now(), data:{ snippet: (text||'').slice(0,200) }});
-        throw new Error('Resposta inválida da API (JSON malformado)');
+        json = text ? JSON.parse(text) : null;
+      } catch {
+        throw new Error(`JSON malformado em ${url}`);
       }
-
-      if(!res.ok){
-        const errMsg = (payload && (payload.message || payload.error)) ? (payload.message || payload.error) : `HTTP ${res.status}`;
-        pushLog({ level:'error', msg:'yahoo_http_error', ts: Date.now(), data:{ status: res.status, error: errMsg, body: (text||'').slice(0,160) }});
-        throw new Error(errMsg);
-      }
-
-      if (!payload || typeof payload !== 'object') {
-        pushLog({ level:'error', msg:'empty_payload', ts: Date.now(), data:{} });
-        throw new Error('Payload vazio da API');
-      }
-
-      pushLog({ level:'info', msg:'yahoo_fetch_ok', ts: Date.now(), data:{
-        rows: Array.isArray(payload?.data) ? payload.data.length : 0,
-        cache:xCache, interval:xInt, range:xRng, sanitized: !!payload?.meta?.sanitized
-      }});
-
-      if (payload?.meta?.sanitized && payload?.meta?.sanitize_report) {
-        pushLog({ level:'info', msg:'sanitize_report_backend', ts: Date.now(), data: payload.meta.sanitize_report });
-      }
-
-      return payload;
+      if (!res.ok) throw new Error((json && (json.message || json.error)) || `HTTP ${res.status} em ${url}`);
+      if (!json || typeof json !== 'object') throw new Error(`Payload vazio em ${url}`);
+      return { json, headers: res.headers };
     }
 
+    async function fetchFromPHP(tf) {
+      const interval = mapInterval(tf);
+      const range    = requestRange(tf);
+      const pos      = (currentScale === 'logarithmic') ? '1' : '0';
+      const url      = `./api/yahoo.php?symbol=BTC-USD&interval=${encodeURIComponent(interval)}&range=${encodeURIComponent(range)}&sanitized=1&pos=${pos}`;
+      const { json, headers } = await fetchJSON(url);
+      const xCache = (headers.get('X-Cache') || 'API').toUpperCase();
+      console.info(`%c${xCache}%c via PHP • tf=${tf}`, 'background:#2563eb;color:#fff;padding:2px 6px;border-radius:4px', 'color:inherit');
+      json.meta = { ...(json.meta||{}), source: 'php' };
+      return json;
+    }
+
+    async function fetchFromStatic(tf) {
+      const url = staticUrlFor(tf);
+      const { json } = await fetchJSON(url);
+      console.info('%cSTATIC%c ' + url, 'background:#16a34a;color:#fff;padding:2px 6px;border-radius:4px', 'color:inherit');
+      json.meta = { ...(json.meta||{}), source: 'static', url };
+      return json;
+    }
+
+    // ===== SUBSTITUI a fetchSeries original =====
+    async function fetchSeries(tf='1d'){
+      const preferStatic = STATIC_MODE;
+      const errors = [];
+
+      if (preferStatic) {
+        try { const p = await fetchFromStatic(tf); saveCache(tf, p); return p; } catch (e) { errors.push(e); }
+        try { const p = await fetchFromPHP(tf);    saveCache(tf, p); return p; } catch (e) { errors.push(e); }
+      } else {
+        try { const p = await fetchFromPHP(tf);    saveCache(tf, p); return p; } catch (e) { errors.push(e); }
+        try { const p = await fetchFromStatic(tf); saveCache(tf, p); return p; } catch (e) { errors.push(e); }
+      }
+
+      const cached = readCache(tf);
+      if (cached && Array.isArray(cached.data) && cached.data.length) {
+        console.warn('Usando cache local (último sucesso).');
+        cached.meta = { ...(cached.meta||{}), source: 'cache' };
+        return cached;
+      }
+
+      const msg = 'Não foi possível carregar dados (PHP/estático/cache).\n' +
+                  errors.map((e,i)=>`[${i+1}] ${e.message}`).join('\n');
+      throw new Error(msg);
+    }
+
+    // =========================
+    // Render / Sync
+    // =========================
     function sliceByOffsets(rows, finish, start){
       const n = rows.length;
-      if (!n) return { data: [], a:0, b:0, left:0, right:0 };
+      if(!n) return { data:[], a:0, b:0, left:0, right:0 };
       const max = Math.max(0, n-1);
       const F = Math.min(Math.max(0, finish|0), max);
-      const S = Math.min(Math.max(0, start|0),  max);
-      const left  = Math.max(F, S);
+      const S = Math.min(Math.max(0, start|0), max);
+      const left = Math.max(F, S);
       const right = Math.min(F, S);
       const idxStart = (n-1) - left;
       const idxEnd   = (n-1) - right;
       const a = Math.max(0, Math.min(idxStart, idxEnd));
       const b = Math.max(0, Math.max(idxStart, idxEnd));
-      return { data: rows.slice(a, b+1), a, b, left, right };
+      return { data:rows.slice(a, b+1), a, b, left, right };
     }
 
     function render(rows){
       if(!engine){
-        engine = new ChartEngine($('#ch'));
-        // Passa o engine para o theme manager
-        themeManager.chartEngine = engine;
+        // usa o endpoint plural (consistente com drawing-tools)
+        engine = new ChartEngine($('#ch'), { bundlesEndpoint: './api/bundles.php' });
+
+        // Inicializa ferramentas de desenho
+        drawingTools = new DrawingTools(engine);
+        drawingTools.init();
+
+        // Dock do toolbar dentro da área do gráfico
+        const shell = document.querySelector('.chart-shell');
+        const tb = document.getElementById('drawing-toolbar');
+        if (shell && tb && tb.parentElement !== shell) shell.appendChild(tb);
       }
       engine.create(rows, { type: currentType, scale: currentScale });
-      
-      // Aplica tema atual no gráfico
-      const theme = themeManager.getCurrentTheme();
-      if (theme) {
-        themeManager.updateChartTheme(theme.colors);
-      }
-      
+
+      // Aplica tema atual
+      const theme = document.documentElement.getAttribute('data-theme');
+      if (theme) updateChartTheme(theme);
+
       currentRows = rows.slice();
 
-      // Atualiza KPIs com valores formatados sem decimais
+      // KPIs
       const last = rows[rows.length-1];
       $('#k-close').textContent = formatPrice(last?.c);
-      
-      const highs = rows.map(r => r.h).filter(Number.isFinite);
-      const lows  = rows.map(r => r.l).filter(Number.isFinite);
+      const highs = rows.map(r=>r.h).filter(Number.isFinite);
+      const lows  = rows.map(r=>r.l).filter(Number.isFinite);
       $('#k-max').textContent = highs.length ? formatPrice(Math.max(...highs)) : '—';
       $('#k-min').textContent = lows.length  ? formatPrice(Math.min(...lows))  : '—';
     }
@@ -272,9 +326,9 @@
       document.getElementById('btn-scale-linear').classList.toggle('active', currentScale==='linear');
       document.getElementById('btn-scale-log').classList.toggle('active', currentScale==='logarithmic');
       if (engine) engine.setScale(currentScale);
-      pushLog({ level:'info', msg:'scale_change', ts: Date.now(), data:{ scale: currentScale }});
+      pushLog({ level:'info', msg:'scale_change', ts:Date.now(), data:{ scale:currentScale }});
       const tag = currentScale==='logarithmic' ? 'Log' : 'Linear';
-      document.getElementById('status').textContent = `OK (${tag})`
+      document.getElementById('status').textContent = `OK (${tag})`;
     }
 
     function setType(type){
@@ -282,36 +336,39 @@
       document.getElementById('btn-type-line').classList.toggle('active', currentType==='line');
       document.getElementById('btn-type-candle').classList.toggle('active', currentType==='candlestick');
       if (engine) engine.setType(currentType);
-      pushLog({ level:'info', msg:'chart_type_change', ts: Date.now(), data:{ type: currentType }});
+      pushLog({ level:'info', msg:'chart_type_change', ts:Date.now(), data:{ type:currentType }});
       document.getElementById('status').textContent = `OK (${currentType === 'candlestick' ? 'Candle' : 'Line'})`;
     }
 
     async function sync(tf){
       document.getElementById('status').textContent = 'Carregando...';
-      pushLog({ level:'info', msg:'sync_start', ts: Date.now(), data:{ tf, scale: currentScale }});
+      pushLog({ level:'info', msg:'sync_start', ts:Date.now(), data:{ tf, scale:currentScale }});
       try{
         const payload = await fetchSeries(tf);
         const data = Array.isArray(payload?.data) ? payload.data : [];
         const meta = payload?.meta || {};
         const { data: rows, stats } = sanitizeLine(data, { requirePositive: currentScale==='logarithmic' });
         fullRows = rows;
-        pushLog({ level: (stats.droppedInvalid>0?'warn':'info'), msg:'sanitize_report_front', ts: Date.now(), data: stats });
+
+        if (stats) {
+          pushLog({ level:(stats.droppedInvalid>0?'warn':'info'), msg:'sanitize_report_front', ts:Date.now(), data:stats });
+        }
 
         const max = Math.max(0, rows.length-1);
         const ensureOW = ()=>{
-          if (!ow) {
-            ow = new OffsetWindow(document.getElementById('ow'), {
-              max, finish: max, start: 0,
-              onApply: ({ max, finish, start })=>{
+          if(!ow){
+            ow = new OffsetWindow(document.getElementById('ow'),{
+              max, finish:max, start:0,
+              onApply:({ max, finish, start })=>{
                 const sliced = sliceByOffsets(fullRows, finish, start);
-                pushLog({ level:'info', msg:'window_offsets', ts: Date.now(), data:{ max, finish, start, size: sliced.data.length, idxStart: sliced.a, idxEnd: sliced.b }});
+                pushLog({ level:'info', msg:'window_offsets', ts:Date.now(), data:{ max, finish, start, size:sliced.data.length, idxStart:sliced.a, idxEnd:sliced.b }});
                 render(sliced.data);
                 document.getElementById('status').textContent = `OK (janela: ${sliced.data.length})`;
               }
             });
-          } else {
+          }else{
             ow.setMax(max);
-            ow.setWindow({ finish: max, start: 0 });
+            ow.setWindow({ finish:max, start:0 });
           }
         };
 
@@ -319,12 +376,14 @@
 
         const sliced = sliceByOffsets(rows, Math.max(0, rows.length-1), 0);
         render(sliced.data);
-        document.getElementById('status').textContent = `OK (${currentScale==='logarithmic'?'Log':'Linear'})`;
-        pushLog({ level:'info', msg:'sync_ok', ts: Date.now(), data:{ bars: rows.length, scale: currentScale, backend_sanitized: !!meta?.sanitized }});
+
+        const src = meta?.source || (meta?.sanitized ? 'php' : 'static');
+        document.getElementById('status').textContent = `OK (${currentScale==='logarithmic'?'Log':'Linear'} | fonte: ${src})`;
+        pushLog({ level:'info', msg:'sync_ok', ts:Date.now(), data:{ bars:rows.length, scale:currentScale, source: src }});
       }catch(e){
         console.error(e);
         document.getElementById('status').textContent = 'Falha';
-        pushLog({ level:'error', msg:'sync_fail', ts: Date.now(), data:{ error: String(e) }});
+        pushLog({ level:'error', msg:'sync_fail', ts:Date.now(), data:{ error:String(e) }});
         alert('Erro: ' + e.message);
       }
     }
@@ -340,9 +399,16 @@
       tableModal.show(currentRows);
       tableModal.el.querySelector('#tm-export').onclick = ()=> tableModal.exportCSV();
     });
+    document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 
     // Inicializa
     sync(document.getElementById('sel-tf').value);
+
+    // Dicas para bundles via console (se backend disponível):
+    // engine.saveBundle({ id:'meu-bundle', name:'Setup', meta:{note:'teste'} })
+    // engine.listBundles()
+    // engine.loadBundle('meu-bundle')
+    // engine.deleteBundle('meu-bundle')
   </script>
 </body>
 </html>
