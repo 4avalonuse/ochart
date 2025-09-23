@@ -1,50 +1,10 @@
-// Registro otimizado de plugins (UMD)
-(function ensurePlugins(){
-  if (typeof Chart === 'undefined') {
-    console.error("⚠️ Chart.js não foi carregado!");
-    return;
-  }
-
-  const plugins = [
-    { name: 'chartjs-plugin-zoom', global: 'ChartZoom', register: (p) => Chart.register(p) },
-    { name: 'chartjs-plugin-annotation', global: 'chartjs-plugin-annotation', register: (p) => Chart.register(p) }
-  ];
-
-  plugins.forEach(({ name, global, register }) => {
-    if (window[global]) {
-      register(window[global]);
-      console.log(`✅ ${name} registrado`);
-    } else {
-      console.warn(`⚠️ ${name} não encontrado em window.${global}`);
-    }
-  });
-
-  // Financial (candlestick/ohlc) - O plugin se auto-registra ao carregar
-  // Verificação silenciosa - se funcionar, está ok
-  setTimeout(() => {
-    try {
-      // Testa se consegue criar um gráfico candlestick temporário
-      const testCanvas = document.createElement('canvas');
-      const testCtx = testCanvas.getContext('2d');
-      const testChart = new Chart(testCtx, {
-        type: 'candlestick',
-        data: { datasets: [{ data: [] }] }
-      });
-      testChart.destroy();
-      console.log("✅ chartjs-chart-financial registrado e funcionando");
-    } catch (e) {
-      // Só avisa se realmente não funcionar
-      if (!Chart.registry?.controllers?.candlestick) {
-        console.warn("⚠️ chartjs-chart-financial pode não estar disponível");
-      }
-    }
-  }, 500);
-})();
-
 /**
  * ChartEngine - Motor de renderização de gráficos financeiros
  * Gerencia a criação, atualização e interação com gráficos Chart.js
  */
+import { sma, ema } from '../utils/indicators.js';
+import { drawingsToAnnotations } from '../ui/annotations.js';
+
 export class ChartEngine {
   constructor(canvasEl) {
     if (!canvasEl) throw new Error('Canvas element é obrigatório');
@@ -80,12 +40,21 @@ export class ChartEngine {
       const cfg = this._buildChartConfig(
         this._datasetFromState(),
         this._maDatasets(),
-        this._annotations()
+        drawingsToAnnotations(this._drawings)   // ✅ vem do módulo ui/annotations
       );
 
       const ctx = this.canvas.getContext('2d');
       this.chart = new Chart(ctx, cfg);
-      
+
+      // Harden sem Hammer: garanta que pinch/pan fiquem OFF
+      const hasHammer = !!(window.Hammer && window.Hammer.Manager);
+      const z = this.chart.options?.plugins?.zoom;
+      if (z && !hasHammer) {
+        if (z.zoom?.pinch) z.zoom.pinch.enabled = false;
+        if (z.pan)         z.pan.enabled        = false;
+      }
+      this.chart.update('none');
+
       this._applyCustomStyles();
       return this.chart;
     } catch (error) {
@@ -114,7 +83,8 @@ export class ChartEngine {
     if (!this.chart.options.plugins.annotation) {
       this.chart.options.plugins.annotation = {};
     }
-    this.chart.options.plugins.annotation.annotations = this._annotations();
+    // ✅ usa conversor externo para anotações
+    this.chart.options.plugins.annotation.annotations = drawingsToAnnotations(this._drawings);
     
     this.chart.update('none');
   }
@@ -287,43 +257,6 @@ export class ChartEngine {
     return colors[period] || '#6b7280';
   }
 
-  _annotations() {
-    const annotations = {};
-    const drawings = this._drawings || [];
-
-    for (const drawing of drawings) {
-      switch (drawing.type) {
-        case 'hline':
-          annotations[drawing.id] = {
-            type: 'line',
-            yMin: drawing.y,
-            yMax: drawing.y,
-            borderWidth: 1.2,
-            borderColor: drawing.color || '#6b7280',
-            borderDash: drawing.dash || [5, 5]
-          };
-          break;
-        
-        case 'trend':
-          annotations[drawing.id] = {
-            type: 'line',
-            xMin: drawing.x1,
-            xMax: drawing.x2,
-            yMin: drawing.y1,
-            yMax: drawing.y2,
-            borderWidth: 1.2,
-            borderColor: drawing.color || '#6b7280'
-          };
-          break;
-        
-        default:
-          console.warn(`Tipo de desenho desconhecido: ${drawing.type}`);
-      }
-    }
-
-    return annotations;
-  }
-
   _datasetFromState() {
     if (this.currentConfig.type === 'candlestick') {
       return [{
@@ -417,7 +350,6 @@ export class ChartEngine {
             },
             ticks: {
               callback: function(value) {
-                // Formata valores sem casas decimais
                 if (value >= 1000000) {
                   return '$' + Math.round(value / 1000000) + 'M';
                 } else if (value >= 1000) {
@@ -460,7 +392,6 @@ export class ChartEngine {
                 const label = ctx.dataset.label || '';
                 const value = ctx.parsed.y;
                 
-                // Para candlestick, mostra OHLC sem decimais
                 if (ctx.dataset.type === 'candlestick' && ctx.raw) {
                   const { o, h, l, c } = ctx.raw;
                   return [
@@ -470,20 +401,19 @@ export class ChartEngine {
                     `Close: $${Math.round(c).toLocaleString()}`
                   ];
                 }
-                
-                // Para linhas e MAs, também sem decimais
                 return `${label}: $${Math.round(value).toLocaleString()}`;
               }
             }
           },
 
+          // 👇 Ajustado para rodar SEM HammerJS
           zoom: {
             limits: {
               x: { min: 'original', max: 'original' },
               y: { min: 'original', max: 'original' }
             },
             pan: {
-              enabled: true,
+              enabled: false,
               mode: 'x',
               modifierKey: null,
               onPan: () => this.callbacks.onPan?.()
@@ -494,7 +424,7 @@ export class ChartEngine {
                 speed: 0.1
               },
               pinch: { 
-                enabled: true 
+                enabled: false
               },
               drag: {
                 enabled: true,
@@ -531,68 +461,4 @@ export class ChartEngine {
       }
     };
   }
-}
-
-// === Funções de Médias Móveis ===
-
-export function sma(values, period) {
-  if (!Array.isArray(values) || period <= 0) {
-    return [];
-  }
-
-  const output = new Array(values.length).fill(undefined);
-  let sum = 0;
-  const queue = [];
-
-  for (let i = 0; i < values.length; i++) {
-    const value = Number(values[i]);
-    
-    if (!Number.isFinite(value)) {
-      queue.length = 0;
-      sum = 0;
-      continue;
-    }
-
-    queue.push(value);
-    sum += value;
-
-    if (queue.length > period) {
-      sum -= queue.shift();
-    }
-
-    if (queue.length === period) {
-      output[i] = sum / period;
-    }
-  }
-
-  return output;
-}
-
-export function ema(values, period) {
-  if (!Array.isArray(values) || period <= 0) {
-    return [];
-  }
-
-  const output = new Array(values.length).fill(undefined);
-  const multiplier = 2 / (period + 1);
-  let previousEMA;
-
-  for (let i = 0; i < values.length; i++) {
-    const value = Number(values[i]);
-    
-    if (!Number.isFinite(value)) {
-      previousEMA = undefined;
-      continue;
-    }
-
-    if (previousEMA === undefined) {
-      previousEMA = value;
-    } else {
-      previousEMA = (value * multiplier) + (previousEMA * (1 - multiplier));
-    }
-
-    output[i] = previousEMA;
-  }
-
-  return output;
 }
