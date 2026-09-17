@@ -21,7 +21,7 @@ export class StorageManager {
         type: this.dt.engine?.currentConfig?.type || 'line',
         scale: this.dt.engine?.currentConfig?.scale || 'logarithmic'
       },
-      viewport: this.dt.engine?.getViewport?.() || null,
+      viewport: this.dt.engine?.getZoomState?.() || null,
       overlays: this.dt.overlayManager.overlays,
       drawings: this.dt.drawingManager.drawings
     };
@@ -50,10 +50,10 @@ export class StorageManager {
     if (payload.config?.type) {
       this.dt.engine.setType(payload.config.type);
     }
-    if (payload.viewport?.xMin != null && payload.viewport?.xMax != null) {
+    if (payload.viewport?.min != null && payload.viewport?.max != null) {
       this.dt.engine.setZoomState({
-        min: payload.viewport.xMin,
-        max: payload.viewport.xMax
+        min: payload.viewport.min,
+        max: payload.viewport.max
       });
     }
 
