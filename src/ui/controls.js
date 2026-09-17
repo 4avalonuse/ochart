@@ -2,6 +2,11 @@ import { sync } from '../core/sync.js';
 import { themeManager } from './theme-manager.js';
 import { pushLog } from './dev-hud.js';
 
+// O estado dos dados pertence ao fluxo de sincronização; este módulo apenas o consome.
+export function setCurrentRows(rows) {
+  currentRows = Array.isArray(rows) ? rows : [];
+}
+
 let currentScale = 'logarithmic';
 let currentType  = 'line';
 let currentRows  = [];
