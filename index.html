@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>ochart — visualizador</title>
+  <title>OChart v0.2.0 — visualizador</title>
   <link rel="icon" href="data:image/svg+xml,
 <svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22>
   <text x=%224%22 y=%2212%22 font-size=%2212%22>📈</text>
@@ -16,12 +16,11 @@
   <script src="./libs/chartjs-plugin-zoom.min.js"></script>
   <script src="./libs/chartjs-plugin-annotation.min.js"></script>
 
-  <!-- Estilos principais do app -->
   <link rel="stylesheet" href="./src/style/app.css">
 </head>
 <body class="ui-surface">
 
-  <header class="box o-version">OChart v0.1.0</header>
+  <header class="box o-version">OChart v0.2.0</header>
 
   <section class="box row">
     <div class="inline">
@@ -56,7 +55,6 @@
     </div>
 
     <div class="spacer"></div>
-
     <button id="btn-table">📊 Tabela</button>
     <button id="btn-sync">🔄 Sync</button>
     <button id="btn-theme"><span>🌙</span> Dark</button>
@@ -76,8 +74,6 @@
   </section>
 
   <div id="dev-hud-root"></div>
-
   <script type="module" src="./src/app.js"></script>
-
 </body>
 </html>
