@@ -22,6 +22,12 @@
 
   <header class="box o-version" data-ochart-version>OChart</header>
 
+  <!-- Identidade da versão: independente do boot principal. -->
+  <script type="module">
+    import { applyVersionUI } from './src/core/version.js';
+    applyVersionUI();
+  </script>
+
   <section class="box row">
     <div class="inline">
       <label>TF</label>
