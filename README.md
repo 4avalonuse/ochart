@@ -1,10 +1,10 @@
-# OChart v0.2.0
+# OChart v0.4.0
 
 Visualizador modular de gráficos financeiros, atualmente focado em BTC-USD.
 
-## Objetivo da v0.2.0
+## Objetivo da v0.4.0
 
-A v0.2.0 organiza o código sem alterar o propósito funcional do OChart. A prioridade é estabelecer fronteiras claras entre dados, estado, renderização, interface e infraestrutura antes da evolução para indicadores, OAlgo e backtest.
+A v0.4.0 consolida o código sem alterar o propósito funcional do OChart. A prioridade é estabelecer fronteiras claras entre dados, estado, renderização, interface e infraestrutura antes da evolução para indicadores, OAlgo e backtest.
 
 ## Arquitetura
 
@@ -49,7 +49,7 @@ src/app.js
 - `src/style/` — estilos.
 - `libs/` — bibliotecas JavaScript locais.
 - `api/` — PHP, cache e dados auxiliares.
-- `adoc/` — histórico/rascunhos; não fazem parte do runtime.
+- `adoc/` — espaço reservado para documentação arquitetural e decisões técnicas.
 
 ## Fluxo de dados
 
@@ -83,6 +83,10 @@ O OChart possui um console de logs visível na própria página. Ele mantém eve
 4. Cada módulo deve possuir uma responsabilidade principal.
 5. Evitar abstrações que ainda não tenham necessidade real.
 6. Testar no site depois de cada etapa relevante.
+
+## Diretriz atual
+
+A prioridade atual é consolidar as fronteiras arquiteturais e a interação mobile do gráfico sem reescrever o núcleo funcional que já está estável. A interface de interação deve evoluir para uma camada baseada em Pointer Events, preservando a API pública do `ChartEngine`.
 
 ## Próximas etapas
 
