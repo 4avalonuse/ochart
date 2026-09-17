@@ -3,6 +3,7 @@ import { fetchSeries } from './data-loader.js';
 import { render } from './renderer.js';
 import { pushLog } from '../ui/dev-hud.js';
 import { OffsetWindow } from '../ui/offset-window.js';
+import { setCurrentRows } from '../ui/controls.js';
 
 let fullRows = [];
 let ow = null;
@@ -16,6 +17,7 @@ export async function sync(engine, tf, currentScale, currentType) {
     const meta = payload?.meta || {};
     const { data: rows, stats } = sanitizeLine(data, { requirePositive: currentScale==='logarithmic' });
     fullRows = rows;
+    setCurrentRows(rows);
 
     if (stats) {
       pushLog({ level:(stats.droppedInvalid>0?'warn':'info'), msg:'sanitize_report_front', ts:Date.now(), data:stats });
