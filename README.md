@@ -22,6 +22,9 @@ src/app.js
 │ CORE                                    │
 │ sync → data-loader → sanitizer          │
 │ renderer → chart-engine                 │
+│              ├→ chart-config             │
+│              ├→ chart-datasets           │
+│              └→ chart-zoom               │
 └─────────────────────────────────────────┘
                    ↓
              Chart.js / plugins
@@ -30,9 +33,10 @@ src/app.js
 ## Estrutura ativa
 
 - `src/app.js` — composição e boot; não contém lógica de domínio.
-- `src/core/chart-engine.js` — estado e ciclo de vida do gráfico.
+- `src/core/chart-engine.js` — estado, ciclo de vida e API pública do gráfico.
 - `src/core/chart-config.js` — configuração do Chart.js e interações.
 - `src/core/chart-datasets.js` — transformação dos dados em datasets.
+- `src/core/chart-zoom.js` — controle do viewport/zoom e compatibilidade de interação.
 - `src/core/renderer.js` — ponte entre dados prontos e visualização.
 - `src/core/data-loader.js` — aquisição de dados e fallback.
 - `src/core/api-source.js` — fonte de API.
