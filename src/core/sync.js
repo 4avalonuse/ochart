@@ -41,14 +41,33 @@ export async function sync(engine, tf, currentScale, currentType) {
     render(engine, sliced.data, currentScale, currentType);
 
     const src = meta?.source || (meta?.sanitized ? 'php' : 'static');
-    document.getElementById('status').textContent = `OK (${currentScale==='logarithmic'?'Log':'Linear'} | fonte: ${src})`;
-    pushLog({ level:'info', msg:'sync_ok', ts:Date.now(), data:{ bars:rows.length, scale:currentScale, source: src }});
+    const last = rows[rows.length - 1];
+    const updated = formatTimestamp(last?.t);
+    const lastPrice = Number.isFinite(last?.c) ? Math.round(last.c).toLocaleString('en-US') : '—';
+    const status = [
+      `OK`,
+      `${currentScale==='logarithmic'?'Log':'Linear'}`,
+      `fonte: ${String(src).toUpperCase()}`,
+      `atualizado: ${updated}`,
+      `candles: ${rows.length}`,
+      `last: ${lastPrice}`
+    ].join(' | ');
+    document.getElementById('status').textContent = status;
+    pushLog({ level:'info', msg:'sync_ok', ts:Date.now(), data:{ bars:rows.length, scale:currentScale, source:src, lastTimestamp:last?.t ?? null, lastClose:last?.c ?? null }});
   }catch(e){
     console.error(e);
     document.getElementById('status').textContent = 'Falha';
     pushLog({ level:'error', msg:'sync_fail', ts:Date.now(), data:{ error:String(e) }});
     alert('Erro: ' + e.message);
   }
+}
+
+function formatTimestamp(value){
+  if (!Number.isFinite(value)) return '—';
+  return new Date(value).toLocaleString('pt-BR', {
+    day:'2-digit', month:'2-digit', year:'numeric',
+    hour:'2-digit', minute:'2-digit', second:'2-digit'
+  });
 }
 
 function sliceByOffsets(rows, finish, start){
