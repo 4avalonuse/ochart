@@ -2,11 +2,14 @@
  * Data Loader — camada de acesso a dados
  * --------------------------------------
  * Fonte principal: API PHP/Yahoo (dados atuais)
+ * Intermediária: API pública
  * Fallback: JSON estático → cache local
  *
  * O loader NÃO sanitiza os dados. Todas as fontes entregam o payload
  * para o mesmo pipeline de normalização antes do gráfico.
  */
+
+import { fetchFromAPI } from './api-source.js';
 
 const QS = new URLSearchParams(location.search);
 
@@ -101,7 +104,7 @@ async function fetchFromStatic(tf) {
 
 /**
  * Função principal — tenta dados atuais primeiro.
- * Fallback: JSON estático → cache local.
+ * Ordem: PHP/Yahoo → API pública → JSON estático → cache local.
  *
  * @param {string} tf - timeframe (1h, 1d, 1w, 1mo)
  * @param {string} scale - 'linear' | 'logarithmic'
@@ -116,10 +119,20 @@ export async function fetchSeries(tf = '1d', scale = 'logarithmic') {
     return payload;
   } catch (e) {
     errors.push(e);
-    console.warn('Yahoo/PHP indisponível. Tentando JSON estático...', e.message);
+    console.warn('Yahoo/PHP indisponível. Tentando API pública...', e.message);
   }
 
-  // 2. Fallback: JSON estático.
+  // 2. Fonte intermediária: API pública.
+  try {
+    const payload = await fetchFromAPI(tf);
+    saveCache(tf, payload);
+    return payload;
+  } catch (e) {
+    errors.push(e);
+    console.warn('API pública indisponível. Tentando JSON estático...', e.message);
+  }
+
+  // 3. Fallback: JSON estático.
   try {
     const payload = await fetchFromStatic(tf);
     saveCache(tf, payload);
@@ -129,7 +142,7 @@ export async function fetchSeries(tf = '1d', scale = 'logarithmic') {
     console.warn('JSON estático indisponível. Tentando cache local...', e.message);
   }
 
-  // 3. Último recurso: cache local.
+  // 4. Último recurso: cache local.
   const cached = readCache(tf);
   if (cached && Array.isArray(cached.data) && cached.data.length) {
     console.warn('Usando cache local (último sucesso).');
@@ -138,7 +151,7 @@ export async function fetchSeries(tf = '1d', scale = 'logarithmic') {
   }
 
   const msg =
-    'Não foi possível carregar dados (Yahoo/PHP, estático ou cache).\n' +
+    'Não foi possível carregar dados (Yahoo/PHP, API pública, estático ou cache).\n' +
     errors.map((e, i) => `[${i + 1}] ${e.message}`).join('\n');
 
   throw new Error(msg);
