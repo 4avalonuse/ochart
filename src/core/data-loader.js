@@ -1,12 +1,11 @@
 /**
- * Data Loader — camada de acesso a dados
- * --------------------------------------
- * Fonte principal: API PHP/Yahoo (dados atuais)
- * Intermediária: API pública
- * Fallback: JSON estático → cache local
+ * Data Loader — acesso a dados.
  *
- * O loader NÃO sanitiza os dados. Todas as fontes entregam o payload
- * para o mesmo pipeline de normalização antes do gráfico.
+ * Fluxo: fonte atual → API pública → JSON estático → último cache local.
+ * O loader não sanitiza: entrega o payload ao pipeline de normalização.
+ *
+ * "forceRefresh" existe para que a ação Atualizar realmente tente uma
+ * nova leitura da fonte, em vez de aceitar silenciosamente um cache válido.
  */
 
 import { fetchFromAPI } from './api-source.js';
@@ -64,27 +63,31 @@ async function fetchJSON(url) {
   return { json, headers: res.headers };
 }
 
-async function fetchFromPHP(tf, scale) {
+async function fetchFromPHP(tf, scale, forceRefresh = false) {
   const interval = mapInterval(tf);
   const range = requestRange(tf);
   const pos = scale === 'logarithmic' ? '1' : '0';
 
-  const url =
-    `./api/yahoo.php?symbol=BTC-USD` +
-    `&interval=${encodeURIComponent(interval)}` +
-    `&range=${encodeURIComponent(range)}` +
-    `&sanitized=1&pos=${pos}`;
+  const params = new URLSearchParams({
+    symbol: 'BTC-USD',
+    interval,
+    range,
+    sanitized: '1',
+    pos
+  });
 
-  const { json, headers } = await fetchJSON(url);
+  if (forceRefresh) params.set('refresh', '1');
+
+  const { json, headers } = await fetchJSON(`./api/yahoo.php?${params.toString()}`);
   const xCache = (headers.get('X-Cache') || 'API').toUpperCase();
 
   console.info(
-    `%c${xCache}%c via Yahoo/PHP • tf=${tf}`,
+    `%c${xCache}%c via Yahoo/PHP • tf=${tf}${forceRefresh ? ' • refresh=1' : ''}`,
     'background:#2563eb;color:#fff;padding:2px 6px;border-radius:4px',
     'color:inherit'
   );
 
-  json.meta = { ...(json.meta || {}), source: 'php' };
+  json.meta = { ...(json.meta || {}), source: 'php', forcedRefresh: forceRefresh };
   return json;
 }
 
@@ -103,18 +106,17 @@ async function fetchFromStatic(tf) {
 }
 
 /**
- * Função principal — tenta dados atuais primeiro.
- * Ordem: PHP/Yahoo → API pública → JSON estático → cache local.
- *
  * @param {string} tf - timeframe (1h, 1d, 1w, 1mo)
- * @param {string} scale - 'linear' | 'logarithmic'
+ * @param {string} scale - linear | logarithmic
+ * @param {{forceRefresh?: boolean}} options
  */
-export async function fetchSeries(tf = '1d', scale = 'logarithmic') {
+export async function fetchSeries(tf = '1d', scale = 'logarithmic', options = {}) {
+  const forceRefresh = options?.forceRefresh === true;
   const errors = [];
 
   // 1. Fonte principal: Yahoo através do PHP proxy.
   try {
-    const payload = await fetchFromPHP(tf, scale);
+    const payload = await fetchFromPHP(tf, scale, forceRefresh);
     saveCache(tf, payload);
     return payload;
   } catch (e) {
@@ -132,7 +134,7 @@ export async function fetchSeries(tf = '1d', scale = 'logarithmic') {
     console.warn('API pública indisponível. Tentando JSON estático...', e.message);
   }
 
-  // 3. Fallback: JSON estático.
+  // 3. Fallback histórico: JSON estático.
   try {
     const payload = await fetchFromStatic(tf);
     saveCache(tf, payload);
@@ -142,16 +144,20 @@ export async function fetchSeries(tf = '1d', scale = 'logarithmic') {
     console.warn('JSON estático indisponível. Tentando cache local...', e.message);
   }
 
-  // 4. Último recurso: cache local.
+  // 4. Último recurso: último sucesso local.
   const cached = readCache(tf);
   if (cached && Array.isArray(cached.data) && cached.data.length) {
     console.warn('Usando cache local (último sucesso).');
-    cached.meta = { ...(cached.meta || {}), source: 'cache' };
+    cached.meta = {
+      ...(cached.meta || {}),
+      source: 'cache',
+      staleFallback: true
+    };
     return cached;
   }
 
   const msg =
-    'Não foi possível carregar dados (Yahoo/PHP, API pública, estático ou cache).\n' +
+    'Não foi possível carregar dados (Yahoo/PHP, API pública, estático ou cache local).\n' +
     errors.map((e, i) => `[${i + 1}] ${e.message}`).join('\n');
 
   throw new Error(msg);
