@@ -13,7 +13,9 @@ export class ChartZoom {
   }
 
   reset() {
-    if (this.chart?.resetZoom) this.chart.resetZoom();
+    if (!this.chart?.resetZoom) return false;
+    this.chart.resetZoom();
+    return true;
   }
 
   getState() {
