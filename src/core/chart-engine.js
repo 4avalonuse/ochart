@@ -1,10 +1,11 @@
 /**
  * ChartEngine — estado e ciclo de vida do gráfico.
- * A configuração visual e a construção dos datasets vivem em módulos separados.
+ * A configuração visual, datasets e zoom vivem em módulos separados.
  */
 import { drawingsToAnnotations } from '../ui/annotations.js';
 import { createDatasets } from './chart-datasets.js';
 import { buildChartConfig } from './chart-config.js';
+import { ChartZoom } from './chart-zoom.js';
 
 export class ChartEngine {
   constructor(canvasEl) {
@@ -16,6 +17,7 @@ export class ChartEngine {
     this.callbacks = { onZoom: null, onPan: null, onDataClick: null, onReset: null };
     this._overlays = [];
     this._drawings = [];
+    this.zoom = new ChartZoom();
   }
 
   create(data, config = {}) {
@@ -43,7 +45,8 @@ export class ChartEngine {
       });
 
       this.chart = new Chart(this.canvas.getContext('2d'), chartConfig);
-      this._hardenZoomWithoutHammer();
+      this.zoom.attach(this.chart);
+      this.zoom.hardenWithoutHammer();
       this.chart.update('none');
       this._applyCustomStyles();
       return this.chart;
@@ -71,6 +74,7 @@ export class ChartEngine {
       this.chart.destroy();
       this.chart = null;
     }
+    this.zoom.attach(null);
   }
 
   setScale(scale) {
@@ -100,10 +104,8 @@ export class ChartEngine {
   }
 
   resetZoom() {
-    if (this.chart?.resetZoom) {
-      this.chart.resetZoom();
-      this.callbacks.onReset?.();
-    }
+    this.zoom.reset();
+    this.callbacks.onReset?.();
   }
 
   on(event, callback) {
@@ -121,12 +123,11 @@ export class ChartEngine {
   }
 
   getZoomState() {
-    const scale = this.chart?.scales?.x;
-    return scale ? { min: scale.min, max: scale.max } : null;
+    return this.zoom.getState();
   }
 
   setZoomState(state) {
-    if (this.chart && state && this.chart.zoomScale) this.chart.zoomScale('x', { min: state.min, max: state.max });
+    this.zoom.setState(state);
   }
 
   _validateData(data) {
@@ -147,15 +148,6 @@ export class ChartEngine {
       if (orphan) {
         try { orphan.destroy(); } catch (error) { console.warn('Erro ao limpar gráfico órfão:', error); }
       }
-    }
-  }
-
-  _hardenZoomWithoutHammer() {
-    const hasHammer = !!(window.Hammer && window.Hammer.Manager);
-    const z = this.chart?.options?.plugins?.zoom;
-    if (z && !hasHammer) {
-      if (z.zoom?.pinch) z.zoom.pinch.enabled = false;
-      if (z.pan) z.pan.enabled = false;
     }
   }
 
