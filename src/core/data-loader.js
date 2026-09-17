@@ -1,10 +1,10 @@
 /**
  * Data Loader — acesso a dados.
  *
- * Fluxo: fonte atual → API pública → JSON estático → último cache local.
+ * Fluxo: Yahoo direto (teste CORS) → Yahoo/PHP → API pública → JSON estático → último cache local.
  * O loader não sanitiza: entrega o payload ao pipeline de normalização.
  *
- * "forceRefresh" existe para que a ação Atualizar realmente tente uma
+ * O acesso direto ao Yahoo é um teste experimental de CORS; em caso de bloqueio, o PHP continua como proxy.\n *\n * "forceRefresh" existe para que a ação Atualizar realmente tente uma
  * nova leitura da fonte, em vez de aceitar silenciosamente um cache válido.
  */
 
@@ -63,6 +63,70 @@ async function fetchJSON(url) {
   return { json, headers: res.headers };
 }
 
+async function fetchFromYahooDirect(tf, scale) {
+  const interval = mapInterval(tf);
+  const range = requestRange(tf);
+  const url = new URL('https://query1.finance.yahoo.com/v8/finance/chart/BTC-USD');
+  url.searchParams.set('interval', interval);
+  url.searchParams.set('range', range);
+
+  try {
+    const { json } = await fetchJSON(url.toString());
+
+    const result = json?.chart?.result?.[0];
+    const timestamps = result?.timestamp || [];
+    const quote = result?.indicators?.quote?.[0];
+
+    if (!timestamps.length || !quote) {
+      throw new Error('Yahoo direto retornou payload sem candles');
+    }
+
+    const data = timestamps.map((t, i) => ({
+      t: Number(t) * 1000,
+      o: Number(quote.open?.[i]),
+      h: Number(quote.high?.[i]),
+      l: Number(quote.low?.[i]),
+      c: Number(quote.close?.[i]),
+      v: Number(quote.volume?.[i])
+    }));
+
+    const payload = {
+      data,
+      meta: {
+        source: 'yahoo-direct',
+        provider: 'yahoo',
+        symbol: 'BTC-USD',
+        interval,
+        range,
+        scale,
+        fetchedAt: Date.now()
+      }
+    };
+
+    window.__HUD__?.pushLog?.({
+      level: 'info',
+      msg: 'yahoo_direct_ok',
+      ts: Date.now(),
+      data: { interval, range, bars: data.length }
+    });
+
+    return payload;
+  } catch (e) {
+    window.__HUD__?.pushLog?.({
+      level: 'warn',
+      msg: 'yahoo_direct_fail',
+      ts: Date.now(),
+      data: {
+        interval,
+        range,
+        error: String(e?.message || e),
+        likelyCors: e instanceof TypeError
+      }
+    });
+    throw e;
+  }
+}
+
 async function fetchFromPHP(tf, scale, forceRefresh = false) {
   const interval = mapInterval(tf);
   const range = requestRange(tf);
@@ -114,7 +178,17 @@ export async function fetchSeries(tf = '1d', scale = 'logarithmic', options = {}
   const forceRefresh = options?.forceRefresh === true;
   const errors = [];
 
-  // 1. Fonte principal: Yahoo através do PHP proxy.
+  // 1. Teste direto: Yahoo pelo JavaScript do navegador.
+  try {
+    const payload = await fetchFromYahooDirect(tf, scale);
+    saveCache(tf, payload);
+    return payload;
+  } catch (e) {
+    errors.push(e);
+    console.warn('Yahoo direto indisponível (possível CORS). Tentando PHP...', e.message);
+  }
+
+  // 2. Fonte principal de produção: Yahoo através do PHP proxy.
   try {
     const payload = await fetchFromPHP(tf, scale, forceRefresh);
     saveCache(tf, payload);
@@ -124,7 +198,7 @@ export async function fetchSeries(tf = '1d', scale = 'logarithmic', options = {}
     console.warn('Yahoo/PHP indisponível. Tentando API pública...', e.message);
   }
 
-  // 2. Fonte intermediária: API pública.
+  // 3. Fonte intermediária: API pública.
   try {
     const payload = await fetchFromAPI(tf);
     saveCache(tf, payload);
@@ -134,7 +208,7 @@ export async function fetchSeries(tf = '1d', scale = 'logarithmic', options = {}
     console.warn('API pública indisponível. Tentando JSON estático...', e.message);
   }
 
-  // 3. Fallback histórico: JSON estático.
+  // 4. Fallback histórico: JSON estático.
   try {
     const payload = await fetchFromStatic(tf);
     saveCache(tf, payload);
@@ -144,7 +218,7 @@ export async function fetchSeries(tf = '1d', scale = 'logarithmic', options = {}
     console.warn('JSON estático indisponível. Tentando cache local...', e.message);
   }
 
-  // 4. Último recurso: último sucesso local.
+  // 5. Último recurso: último sucesso local.
   const cached = readCache(tf);
   if (cached && Array.isArray(cached.data) && cached.data.length) {
     console.warn('Usando cache local (último sucesso).');
