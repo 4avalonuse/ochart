@@ -104,8 +104,7 @@ export class ChartEngine {
   }
 
   resetZoom() {
-    this.zoom.reset();
-    this.callbacks.onReset?.();
+    if (this.zoom.reset()) this.callbacks.onReset?.();
   }
 
   on(event, callback) {
