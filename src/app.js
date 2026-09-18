@@ -2,6 +2,7 @@
 // Responsabilidade: montar os módulos e iniciar a aplicação.
 import { ChartEngine } from './core/chart-engine.js';
 import { applyVersionUI } from './core/version.js';
+import { checkDataApi } from './core/api-health.js';
 import { mountHUD } from './ui/dev-hud.js';
 import { DrawingTools } from './ui/drawing-tools.js';
 import { TableModal } from './ui/table-modal.js';
@@ -24,6 +25,9 @@ function boot() {
 
   themeManager.init(engine);
   setupControls(engine, new TableModal());
+
+  // Verifica o backend sem bloquear a inicialização do gráfico.
+  checkDataApi();
 }
 
 boot();
