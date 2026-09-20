@@ -1,98 +1,53 @@
-# OChart v0.4.0
+# OChart v0.5.0
 
-Visualizador modular de gráficos financeiros, atualmente focado em BTC-USD.
-
-## Objetivo da v0.4.0
-
-A v0.4.0 consolida o código sem alterar o propósito funcional do OChart. A prioridade é estabelecer fronteiras claras entre dados, estado, renderização, interface e infraestrutura antes da evolução para indicadores, OAlgo e backtest.
+Visualizador modular do Oraculum, consumindo a Cloudflare Data API como única fonte de dados.
 
 ## Arquitetura
 
 ```text
-index.html
-    ↓
-src/app.js
-    ↓
-┌─────────────────────────────────────────┐
-│ UI                                      │
-│ controls / HUD / theme / drawings       │
-└──────────────────┬──────────────────────┘
-                   ↓
-┌─────────────────────────────────────────┐
-│ CORE                                    │
-│ sync → data-loader → sanitizer          │
-│ renderer → chart-engine                 │
-│              ├→ chart-config             │
-│              ├→ chart-datasets           │
-│              └→ chart-zoom               │
-└─────────────────────────────────────────┘
-                   ↓
-             Chart.js / plugins
+Dataset Catalog
+      ↓
+Cloudflare Data API
+      ↓
+OChart Data Loader
+      ↓
+Sanitizer → Sync → Renderer → ChartEngine → Chart.js
+```
+
+O OChart não conversa diretamente com Yahoo, Binance ou outros providers. Providers são responsabilidade da Data API.
+
+## Fluxo de dados
+
+- `GET /api/datasets` fornece o catálogo.
+- `GET /api/datasets/:id` carrega o dataset persistido.
+- `POST /api/datasets/:id/refresh` é usado pelo botão **Atualizar**.
+- O OChart mantém apenas um cache local do último sucesso como fallback.
+- O estado do gráfico é separado do catálogo e da aquisição de dados.
+
+## Interface
+
+O seletor **Dataset** usa diretamente o catálogo do backend. O seletor **TF** altera o intervalo dentro do mesmo ativo/provider quando essa combinação existe.
+
+O formato canônico consumido pelo gráfico continua:
+
+```js
+{ t, o, h, l, c, v }
 ```
 
 ## Estrutura ativa
 
-- `src/app.js` — composição e boot; não contém lógica de domínio.
-- `src/core/chart-engine.js` — estado, ciclo de vida e API pública do gráfico.
-- `src/core/chart-config.js` — configuração do Chart.js e interações.
-- `src/core/chart-datasets.js` — transformação dos dados em datasets.
-- `src/core/chart-zoom.js` — controle do viewport/zoom e compatibilidade de interação.
-- `src/core/renderer.js` — ponte entre dados prontos e visualização.
-- `src/core/data-loader.js` — aquisição de dados e fallback.
-- `src/core/api-source.js` — fonte de API.
-- `src/core/sanitizer.js` — normalização e validação de dados.
-- `src/core/sync.js` — coordenação do fluxo de atualização.
-- `src/core/logger.js` — infraestrutura de logs.
+- `src/app.js` — composição e boot.
+- `src/core/api-config.js` — endpoint central da Data API.
+- `src/core/api-source.js` — catálogo, leitura e refresh de datasets.
+- `src/core/data-loader.js` — aquisição + cache local.
+- `src/core/sanitizer.js` — normalização/validação.
+- `src/core/sync.js` — coordenação do fluxo.
+- `src/core/chart-engine.js` — estado e ciclo de vida do gráfico.
 - `src/ui/` — interface e componentes visuais.
-- `src/ui/drawing-tools/` — ferramentas de desenho separadas por responsabilidade.
-- `src/utils/` — cálculos auxiliares/indicadores.
-- `src/style/` — estilos.
-- `libs/` — bibliotecas JavaScript locais.
-- `api/` — PHP, cache e dados auxiliares.
-- `adoc/` — espaço reservado para documentação arquitetural e decisões técnicas.
+- `api/` — legado mantido no repositório, mas fora do fluxo ativo de dados.
 
-## Fluxo de dados
+## Regra arquitetural
 
-```text
-Fonte externa/cache
-      ↓
-Data Loader
-      ↓
-Sanitizer
-      ↓
-Sync
-      ↓
-Renderer
-      ↓
-ChartEngine
-      ↓
-Chart.js
-```
+A UI conhece **datasets**. A Data API conhece **providers**. O OChart não deve duplicar lógica de provider nem montar URLs de Yahoo/Binance.
 
-O princípio é simples: dados externos não devem entrar diretamente no motor visual sem passar pela fronteira de normalização.
-
-## Diagnóstico no celular
-
-O OChart possui um console de logs visível na própria página. Ele mantém eventos recentes, permite filtrar níveis e copiar o log técnico completo. O console é parte da infraestrutura de desenvolvimento e deve permanecer disponível enquanto a arquitetura estiver em evolução.
-
-## Regra de desenvolvimento
-
-1. Preservar uma versão funcional antes de mudanças maiores.
-2. Fazer mudanças pequenas e verificáveis.
-3. Não reescrever arquivos complexos sem mapear dependências.
-4. Cada módulo deve possuir uma responsabilidade principal.
-5. Evitar abstrações que ainda não tenham necessidade real.
-6. Testar no site depois de cada etapa relevante.
-
-## Diretriz atual
-
-A prioridade atual é consolidar as fronteiras arquiteturais e a interação mobile do gráfico sem reescrever o núcleo funcional que já está estável. A interface de interação deve evoluir para uma camada baseada em Pointer Events, preservando a API pública do `ChartEngine`.
-
-## Próximas etapas
-
-- concluir a separação das responsabilidades restantes;
-- revisar o fluxo de dados e sanitização;
-- revisar ferramentas de desenho;
-- consolidar indicadores como módulo de domínio;
-- preparar a interface de dados que será consumida pelo OAlgo;
-- somente depois iniciar OAlgo e OBacktest.
+Próxima evolução: ampliar o catálogo com novos ativos, como ETH, sem recriar o fluxo de dados do frontend.
