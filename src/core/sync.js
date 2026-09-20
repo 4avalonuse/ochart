@@ -8,10 +8,14 @@ import { setCurrentRows } from '../ui/controls.js';
 let fullRows = [];
 let ow = null;
 let syncSequence = 0;
+let activeRenderScale = 'logarithmic';
+let activeRenderType = 'line';
 
 export async function sync(engine, datasetId, currentScale, currentType, options = {}) {
   const forceRefresh = options?.forceRefresh === true;
   const sequence = ++syncSequence;
+  activeRenderScale = currentScale;
+  activeRenderType = currentType;
   document.getElementById('status').textContent = forceRefresh ? 'Atualizando...' : 'Carregando...';
 
   pushLog({
@@ -54,7 +58,7 @@ export async function sync(engine, datasetId, currentScale, currentType, options
         start: 0,
         onApply: ({ finish, start }) => {
           const sliced = sliceByOffsets(fullRows, finish, start);
-          render(engine, sliced.data, currentScale, currentType);
+          render(engine, sliced.data, activeRenderScale, activeRenderType);
           document.getElementById('status').textContent = `OK (janela: ${sliced.data.length})`;
         }
       });
