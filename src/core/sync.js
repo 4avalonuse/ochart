@@ -7,9 +7,11 @@ import { setCurrentRows } from '../ui/controls.js';
 
 let fullRows = [];
 let ow = null;
+let syncSequence = 0;
 
 export async function sync(engine, datasetId, currentScale, currentType, options = {}) {
   const forceRefresh = options?.forceRefresh === true;
+  const sequence = ++syncSequence;
   document.getElementById('status').textContent = forceRefresh ? 'Atualizando...' : 'Carregando...';
 
   pushLog({
@@ -21,6 +23,11 @@ export async function sync(engine, datasetId, currentScale, currentType, options
 
   try {
     const payload = await fetchSeries(datasetId, { forceRefresh });
+    if (sequence !== syncSequence) {
+      pushLog({ level: 'info', msg: 'sync_stale_discard', ts: Date.now(), data: { datasetId } });
+      return;
+    }
+
     const data = Array.isArray(payload?.data) ? payload.data : [];
     const meta = payload?.meta || {};
     const { data: rows, stats } = sanitizeLine(data, {
