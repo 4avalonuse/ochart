@@ -41,6 +41,13 @@ export class DrawingToolbar {
 
   _getTemplate() {
     return `
+      <div class="toolbar-head">
+        <div>
+          <strong>Opções do gráfico</strong>
+          <span class="muted">desenhos e indicadores</span>
+        </div>
+        <button id="dt-close" class="toolbar-close" title="Fechar opções" aria-label="Fechar opções">×</button>
+      </div>
       <div class="toolbar-section">
         <div class="toolbar-actions">
           <button id="dt-undo" title="Desfazer (Ctrl+Z)">↶</button>
@@ -135,6 +142,11 @@ export class DrawingToolbar {
   _attachListeners() {
     const el = this.element;
     
+    // Fechar painel de opções
+    el.querySelector('#dt-close')?.addEventListener('click', () => {
+      document.body.classList.remove('chart-tools-open');
+    });
+
     // Botões principais
     el.querySelector('#dt-undo').addEventListener('click', () => this.dt.undo());
     el.querySelector('#dt-redo').addEventListener('click', () => this.dt.redo());
