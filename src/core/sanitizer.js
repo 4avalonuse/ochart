@@ -33,11 +33,14 @@ export class DataSanitizer {
   constructor(options = {}) {
     this.options = {
       requirePositive: true,
-      detectOutliers: true,
+      detectOutliers: false,
       outlierThreshold: 10,    // Variação de 10x é suspeita
       fillGaps: false,          // Preencher gaps temporais
       validateDates: true,      // Validar datas dentro de range razoável
       preserveOriginal: false,  // Manter cópia dos dados originais
+      // Detecção de outliers nunca altera dados por padrão. Ativar explicitamente.
+      // Quando ativa, pontos classificados como outliers podem ser interpolados.
+
       ...options
     };
     
@@ -292,12 +295,8 @@ export class DataSanitizer {
       stats.negOrNaNVolToZero++;
     }
 
-    // Arredonda preços OHLC para valores inteiros (sem centavos)
-    o = Math.round(o);
-    h = Math.round(h);
-    l = Math.round(l);
-    c = Math.round(c);
-
+    // Preserva a precisão original dos preços.
+    // Formatação/arredondamento pertence à camada de apresentação, nunca ao dado.
     return { t, o, h, l, c, v };
   }
 
