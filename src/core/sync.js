@@ -4,6 +4,7 @@ import { render } from './renderer.js';
 import { pushLog } from '../ui/dev-hud.js';
 import { OffsetWindow } from '../ui/offset-window.js';
 import { setCurrentRows } from '../ui/controls.js';
+import { showToast } from '../ui/toast.js';
 
 let fullRows = [];
 let ow = null;
@@ -73,11 +74,13 @@ export async function sync(engine, datasetId, currentScale, currentType, options
     const last = rows[rows.length - 1];
     const updated = formatTimestamp(last?.t);
     const lastPrice = Number.isFinite(last?.c)
-      ? Math.round(last.c).toLocaleString('en-US')
+      ? last.c.toLocaleString('en-US', { maximumFractionDigits: 8 })
       : '—';
 
     const stale = meta.staleFallback === true;
     const stateLabel = stale ? 'CACHE (stale)' : 'OK';
+
+    updateMarketHeader({ datasetId, meta, rows, last, updated, stale });
 
     document.getElementById('status').textContent = [
       stateLabel,
@@ -118,8 +121,28 @@ export async function sync(engine, datasetId, currentScale, currentType, options
       data: { datasetId, error: String(e?.message || e), forceRefresh }
     });
 
-    alert('Erro: ' + e.message);
+    showToast(forceRefresh ? 'Não foi possível atualizar os dados.' : 'Não foi possível carregar os dados.', 'error', 4500);
   }
+}
+
+function updateMarketHeader({ datasetId, meta, rows, last, updated, stale }) {
+  const datasetName = meta.name || datasetId || 'Mercado';
+  const name = datasetName.split(' · ')[0] || datasetName;
+  const symbol = meta.symbol || '—';
+  const provider = meta.provider === 'binance-us' ? 'Binance.US' : meta.provider === 'yahoo' ? 'Yahoo Finance' : (meta.provider || '—');
+  const interval = meta.interval || '—';
+  const previous = rows.length > 1 ? rows[rows.length - 2]?.c : null;
+  const change = Number.isFinite(last?.c) && Number.isFinite(previous) && previous !== 0
+    ? ((last.c - previous) / previous) * 100
+    : null;
+  document.getElementById('market-name').textContent = name;
+  document.getElementById('market-symbol').textContent = symbol;
+  document.getElementById('market-provider').textContent = `Fonte · ${provider}${stale ? ' · cache' : ''}`;
+  document.getElementById('market-interval').textContent = `Período · ${interval}`;
+  document.getElementById('market-updated').textContent = `Atualizado · ${updated}`;
+  document.getElementById('k-close').textContent = Number.isFinite(last?.c) ? last.c.toLocaleString('en-US', { maximumFractionDigits: 8 }) : '—';
+  document.getElementById('k-change').textContent = change == null ? '—' : `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+  document.getElementById('k-change').dataset.state = change == null ? 'neutral' : change >= 0 ? 'up' : 'down';
 }
 
 function formatTimestamp(value) {
