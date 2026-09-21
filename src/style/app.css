@@ -428,3 +428,157 @@ canvas{ background:var(--surface); }
   }
   .metrics{ overflow-x:auto; flex-wrap:nowrap; }
 }
+
+
+/* =========================================================
+   8) SIMPLE CHART / FOCUS MODE
+   Página normal: gráfico limpo. Modo foco: todas as opções.
+   ========================================================= */
+.chart-main{ position:relative; }
+.chart-quick-controls{
+  position:absolute;
+  top:10px;
+  right:10px;
+  z-index:8;
+  display:flex;
+  gap:6px;
+}
+.chart-quick-controls button{
+  width:36px;
+  height:36px;
+  padding:0;
+  border-radius:10px;
+  font-size:18px;
+  font-weight:700;
+  background:rgba(15,17,26,.88);
+  color:var(--text);
+  border:1px solid var(--border);
+  backdrop-filter:blur(6px);
+}
+.chart-quick-controls button:hover{ background:var(--button-hover); }
+
+/* Página simples: opções avançadas ficam fora do caminho. */
+body:not(.chart-focus) .chart-controls{ display:none; }
+body:not(.chart-focus) #drawing-toolbar{ display:none !important; }
+
+/* Modo foco ocupa a tela e revela o painel superior. */
+body.chart-focus{
+  overflow:hidden;
+}
+body.chart-focus > .o-version,
+body.chart-focus > .metrics{
+  display:none;
+}
+body.chart-focus .chart-controls{
+  display:flex;
+  position:fixed;
+  left:12px;
+  right:12px;
+  top:10px;
+  z-index:100;
+  max-height:calc(100vh - 24px);
+  overflow:auto;
+  box-shadow:0 8px 30px rgba(0,0,0,.18);
+}
+body.chart-focus .chart-main{
+  position:fixed;
+  inset:0;
+  z-index:90;
+  margin:0;
+  height:100vh;
+  min-height:0;
+  border-radius:0;
+  padding:10px;
+  background:var(--surface);
+}
+body.chart-focus .chart-shell{
+  height:100%;
+  padding-left:0;
+  padding-top:0;
+}
+body.chart-focus.chart-tools-open .chart-shell{
+  padding-left:calc(var(--tools-width) + var(--tools-gap));
+}
+body.chart-focus #drawing-toolbar{
+  display:none !important;
+}
+body.chart-focus.chart-tools-open #drawing-toolbar{
+  display:block !important;
+}
+body.chart-focus .chart-quick-controls{
+  top:auto;
+  bottom:14px;
+  right:14px;
+  z-index:110;
+}
+body.chart-focus #chart-open-focus::before{ content:"×"; }
+body.chart-focus #chart-open-focus{ font-size:0; }
+body.chart-focus #chart-open-focus::before{ font-size:22px; }
+body.chart-focus #chart-open-tools{
+  background:var(--button-active);
+  color:var(--surface);
+}
+
+/* Cabeçalho do painel: X simples e sempre visível. */
+#drawing-toolbar .toolbar-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:2px 2px 10px;
+  margin-bottom:8px;
+  border-bottom:1px solid var(--border);
+}
+#drawing-toolbar .toolbar-head strong{
+  display:block;
+  font-size:13px;
+}
+#drawing-toolbar .toolbar-head .muted{
+  display:block;
+  margin-top:2px;
+  font-size:10px;
+}
+#drawing-toolbar .toolbar-close{
+  width:32px !important;
+  height:32px !important;
+  padding:0 !important;
+  border-radius:8px !important;
+  font-size:22px !important;
+  line-height:1 !important;
+}
+
+/* Em telas pequenas, o modo foco vira realmente tela cheia. */
+@media (max-width:700px){
+  body.chart-focus .chart-controls{
+    left:6px;
+    right:6px;
+    top:6px;
+    padding:7px;
+  }
+  body.chart-focus .chart-main{ padding:6px; }
+  body.chart-focus .chart-shell{
+    padding-top:0;
+    padding-left:0;
+  }
+  body.chart-focus.chart-tools-open .chart-shell{ padding-left:0; }
+  body.chart-focus.chart-tools-open #drawing-toolbar{
+    position:absolute !important;
+    left:6px !important;
+    right:6px !important;
+    top:6px !important;
+    width:auto !important;
+    height:auto !important;
+    max-height:calc(100svh - 80px) !important;
+    margin:0 !important;
+    z-index:120 !important;
+  }
+  body.chart-focus.chart-tools-open .chart-quick-controls{ z-index:130; }
+  body.chart-focus .mobile-chart-controls{
+    display:flex;
+    bottom:14px;
+    top:auto;
+    left:10px;
+    right:auto;
+    z-index:115;
+  }
+}
