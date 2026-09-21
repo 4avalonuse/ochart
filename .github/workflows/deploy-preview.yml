@@ -1,10 +1,10 @@
-name: Deploy OChart Preview
+name: Deploy OChart
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - refactor/data-api-dataset-catalog
+      - main
 
 permissions:
   contents: read
@@ -12,7 +12,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages-preview
+  group: pages
   cancel-in-progress: true
 
 jobs:
