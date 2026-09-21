@@ -2,7 +2,7 @@
 // Para lançar uma nova versão, altere apenas VERSION e, se necessário, APP_NAME.
 
 export const APP_NAME = 'OChart';
-export const VERSION = '0.6.1';
+export const VERSION = '0.6.2';
 export const VERSION_LABEL = `v${VERSION}`;
 export const APP_TITLE = `${APP_NAME} ${VERSION_LABEL}`;
 
