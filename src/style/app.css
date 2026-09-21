@@ -370,3 +370,61 @@ canvas{ background:var(--surface); }
     padding:6px 7px;
   }
 }
+
+/* =========================================================
+   7) MOBILE CHART UX
+   ========================================================= */
+.chart-shell{ min-width:0; }
+.mobile-chart-controls{
+  position:absolute;
+  right:10px;
+  top:10px;
+  z-index:5;
+  display:none;
+  gap:5px;
+}
+.mobile-chart-controls button{
+  min-width:38px;
+  height:34px;
+  padding:0 9px;
+  border-radius:9px;
+  font-size:17px;
+  font-weight:700;
+  background:rgba(15,17,26,.88);
+  color:var(--text);
+  border:1px solid var(--border);
+  backdrop-filter:blur(5px);
+}
+.mobile-chart-controls #chart-zoom-fit{ font-size:12px; min-width:42px; }
+@media (max-width:700px){
+  body{ margin:8px; }
+  .box.chart-main{
+    height:calc(100svh - 245px);
+    min-height:360px;
+    padding:6px;
+  }
+  .chart-shell{
+    height:100%;
+    padding-left:0;
+    touch-action:none;
+  }
+  .chart-shell canvas{ touch-action:none; }
+  .mobile-chart-controls{ display:flex; }
+  .chart-controls{
+    overflow-x:auto;
+    flex-wrap:nowrap;
+    align-items:center;
+    padding:8px;
+  }
+  .chart-controls .inline{ flex:0 0 auto; }
+  .chart-controls .timeframe-control{
+    width:auto;
+    justify-content:flex-start;
+  }
+  .chart-controls .timeframe-control .seg{ min-width:0; }
+  .chart-controls #tf-buttons button{
+    flex:0 0 auto;
+    min-width:40px;
+  }
+  .metrics{ overflow-x:auto; flex-wrap:nowrap; }
+}
