@@ -26,6 +26,11 @@ function boot() {
   themeManager.init(engine);
   setupControls(engine, new TableModal());
 
+  // Controles compactos para celular.
+  document.getElementById('chart-zoom-out')?.addEventListener('click', () => engine.zoom.zoomBy(1.25));
+  document.getElementById('chart-zoom-in')?.addEventListener('click', () => engine.zoom.zoomBy(0.8));
+  document.getElementById('chart-zoom-fit')?.addEventListener('click', () => engine.resetZoom());
+
   // Verifica o backend sem bloquear a inicialização do gráfico.
   checkDataApi();
 }
