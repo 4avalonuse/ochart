@@ -9,13 +9,11 @@
   <text x=%224%22 y=%2212%22 font-size=%2212%22>📈</text>
 </svg>">
 
-  <!-- Núcleo Chart.js e plugins (UMD) -->
   <script src="./libs/chart.umd.js"></script>
   <script src="./libs/chartjs-adapter-date-fns.bundle.js"></script>
   <script src="./libs/chartjs-chart-financial.min.js"></script>
   <script src="./libs/chartjs-plugin-zoom.min.js"></script>
   <script src="./libs/chartjs-plugin-annotation.min.js"></script>
-
   <link rel="stylesheet" href="./src/style/app.css">
 </head>
 <body class="ui-surface">
@@ -27,58 +25,84 @@
     applyVersionUI();
   </script>
 
-  <section class="box row chart-controls">
-    <div class="inline">
-      <label for="sel-provider">Fonte</label>
-      <select id="sel-provider" aria-label="Fonte de dados"></select>
-    </div>
-
-    <div class="inline timeframe-control">
-      <label>Período</label>
-      <div id="tf-buttons" class="seg" role="group" aria-label="Período">
-        <button type="button" data-interval="1m" aria-pressed="false">1m</button>
-        <button type="button" data-interval="1h" aria-pressed="false">1h</button>
-        <button type="button" data-interval="1d" aria-pressed="false">1d</button>
-        <button type="button" data-interval="1w" aria-pressed="false">1w</button>
-        <button type="button" data-interval="1M" aria-pressed="false">1M</button>
+  <section class="box row chart-controls" aria-label="Controles do gráfico">
+    <div class="control-group control-market">
+      <span class="control-caption">Mercado</span>
+      <div class="inline">
+        <label for="sel-provider">Fonte</label>
+        <select id="sel-provider" aria-label="Fonte de dados"></select>
+      </div>
+      <div class="inline timeframe-control">
+        <label>Período</label>
+        <div id="tf-buttons" class="seg" role="group" aria-label="Período">
+          <button type="button" data-interval="1m" aria-pressed="false">1m</button>
+          <button type="button" data-interval="1h" aria-pressed="false">1h</button>
+          <button type="button" data-interval="1d" aria-pressed="false">1d</button>
+          <button type="button" data-interval="1w" aria-pressed="false">1w</button>
+          <button type="button" data-interval="1M" aria-pressed="false">1M</button>
+        </div>
       </div>
     </div>
 
-    <div class="inline">
-      <label class="muted">Janela</label>
-      <div id="ow"></div>
-    </div>
-
-    <div class="inline">
-      <label class="muted">Tipo</label>
-      <div class="seg">
-        <button id="btn-type-line" class="active">Line</button>
-        <button id="btn-type-candle">Candle</button>
+    <div class="control-group">
+      <span class="control-caption">Gráfico</span>
+      <div class="inline">
+        <label class="muted">Tipo</label>
+        <div class="seg">
+          <button id="btn-type-line" class="active">Linha</button>
+          <button id="btn-type-candle">Velas</button>
+        </div>
+      </div>
+      <div class="inline">
+        <label class="muted">Escala</label>
+        <div class="seg">
+          <button id="btn-scale-linear">Linear</button>
+          <button id="btn-scale-log" class="active">Log</button>
+        </div>
       </div>
     </div>
 
-    <div class="inline">
-      <label class="muted">Escala</label>
-      <div class="seg">
-        <button id="btn-scale-linear">Linear</button>
-        <button id="btn-scale-log" class="active">Log</button>
+    <div class="control-group control-data">
+      <span class="control-caption">Dados</span>
+      <div class="inline">
+        <label class="muted">Janela</label>
+        <div id="ow"></div>
       </div>
+      <button id="btn-table">Tabela</button>
+      <button id="btn-sync">Atualizar</button>
     </div>
 
-    <div class="spacer"></div>
-    <button id="btn-table">📊 Tabela</button>
-    <button id="btn-sync">🔄 Sync</button>
-    <button id="btn-theme"><span>🌙</span> Dark</button>
-    <span id="api-status" class="muted" data-state="offline">☁️ Cloudflare: não configurado</span>
-    <span id="status" class="muted">—</span>
+    <div class="control-group control-system">
+      <span class="control-caption">Sistema</span>
+      <button id="btn-theme"><span>🌙</span> Tema</button>
+      <span id="api-status" class="status-chip" data-state="offline">Cloudflare · —</span>
+      <span id="status" class="status-chip">—</span>
+    </div>
   </section>
 
   <section class="box chart-main">
     <div class="chart-shell">
-      <div class="chart-quick-controls" aria-label="Controles rápidos do gráfico">
-        <button type="button" id="chart-open-focus" aria-label="Abrir gráfico completo" title="Abrir gráfico completo">⛶</button>
-        <button type="button" id="chart-open-tools" aria-label="Abrir opções" title="Opções do gráfico">ⓘ</button>
+      <div class="market-strip" aria-label="Resumo do mercado">
+        <div class="market-main">
+          <div id="market-name" class="market-name">Bitcoin / USD</div>
+          <div id="market-symbol" class="market-symbol">BTC-USD</div>
+        </div>
+        <div class="market-price">
+          <div id="k-close" class="market-value">—</div>
+          <div id="k-change" class="market-change">—</div>
+        </div>
+        <div class="market-meta">
+          <span id="market-provider">Fonte · —</span>
+          <span id="market-interval">Período · —</span>
+          <span id="market-updated">Atualizado · —</span>
+        </div>
       </div>
+
+      <div class="chart-quick-controls" aria-label="Controles rápidos do gráfico">
+        <button type="button" id="chart-open-focus" aria-label="Abrir gráfico completo" title="Tela cheia">⛶</button>
+        <button type="button" id="chart-open-tools" aria-label="Abrir opções" title="Opções do gráfico">☷</button>
+      </div>
+
       <div class="mobile-chart-controls" aria-label="Controles do gráfico">
         <button type="button" id="chart-zoom-out" aria-label="Diminuir zoom">−</button>
         <button type="button" id="chart-zoom-fit" aria-label="Mostrar tudo">Fit</button>
@@ -88,12 +112,12 @@
     </div>
   </section>
 
-  <section class="box row metrics">
-    <div><div class="muted">Preço (close)</div><div id="k-close" class="big price-value">—</div></div>
+  <section class="box row metrics" aria-label="Estatísticas da janela">
     <div><div class="muted">Máx (janela)</div><div id="k-max" class="big price-value">—</div></div>
     <div><div class="muted">Mín (janela)</div><div id="k-min" class="big price-value">—</div></div>
   </section>
 
+  <div id="toast-root" aria-live="polite"></div>
   <div id="dev-hud-root"></div>
   <script type="module" src="./src/app.js"></script>
 </body>
