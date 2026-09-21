@@ -64,8 +64,7 @@ export async function setupControls(engine, tableModal) {
     const match = datasets.find(d =>
       d.provider === provider &&
       (!current ||
-        (d.symbol === current.symbol &&
-         d.kind === current.kind &&
+        (d.kind === current.kind &&
          d.currency === current.currency &&
          d.interval === current.interval))
     );
