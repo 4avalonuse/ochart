@@ -3,6 +3,7 @@ import { fetchDatasets } from '../core/api-source.js';
 import { themeManager } from './theme-manager.js';
 import { pushLog } from './dev-hud.js';
 import { findSiblingDataset } from '../core/dataset-utils.js';
+import { showToast } from './toast.js';
 
 let currentScale = 'logarithmic';
 let currentType = 'line';
@@ -156,7 +157,7 @@ export async function setupControls(engine, tableModal) {
       ts: Date.now(),
       data: { error: String(e?.message || e) }
     });
-    alert('Erro ao carregar catálogo: ' + e.message);
+    showToast('Não foi possível carregar o catálogo.', 'error', 4500);
   }
 }
 
