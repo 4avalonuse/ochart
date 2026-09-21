@@ -77,9 +77,6 @@ export class TableModal {
               <tbody></tbody>
             </table>
           </div>
-          <div class="tm-foot muted">
-            Dica: role para ver mais linhas · Ordenação simples (clique nos cabeçalhos) — em breve
-          </div>
         </div>
       </div>
     `;
