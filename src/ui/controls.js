@@ -2,7 +2,7 @@ import { sync } from '../core/sync.js';
 import { fetchDatasets } from '../core/api-source.js';
 import { themeManager } from './theme-manager.js';
 import { pushLog } from './dev-hud.js';
-import { findSiblingDataset, intervalToTf, tfToInterval } from '../core/dataset-utils.js';
+import { findSiblingDataset } from '../core/dataset-utils.js';
 
 let currentScale = 'logarithmic';
 let currentType = 'line';
@@ -10,30 +10,39 @@ let currentRows = [];
 let datasets = [];
 let currentDatasetId = null;
 
-function datasetLabel(d) {
-  return d.name || d.id;
+function providerLabel(provider) {
+  return provider === 'binance-us' ? 'Binance.US' : provider === 'yahoo' ? 'Yahoo Finance' : provider;
 }
 
-function populateDatasets(select) {
+function populateProviders(select) {
   select.replaceChildren();
-  for (const d of datasets) {
+  const providers = [...new Set(datasets.map(d => d.provider))];
+  for (const provider of providers) {
     const option = document.createElement('option');
-    option.value = d.id;
-    option.textContent = datasetLabel(d);
+    option.value = provider;
+    option.textContent = providerLabel(provider);
     select.appendChild(option);
   }
 }
 
+function populateTimeframes(currentInterval) {
+  document.querySelectorAll('#tf-buttons button[data-interval]').forEach(button => {
+    const active = button.dataset.interval === currentInterval;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+}
+
 export async function setupControls(engine, tableModal) {
-  const datasetSelect = document.getElementById('sel-dataset');
-  const tfSelect = document.getElementById('sel-tf');
+  const providerSelect = document.getElementById('sel-provider');
 
   function selectDataset(id) {
     const dataset = datasets.find(d => d.id === id);
     if (!dataset) return;
 
     currentDatasetId = dataset.id;
-    tfSelect.value = intervalToTf(dataset.interval);
+    providerSelect.value = dataset.provider;
+    populateTimeframes(dataset.interval);
 
     pushLog({
       level: 'info',
@@ -48,6 +57,48 @@ export async function setupControls(engine, tableModal) {
     });
 
     void sync(engine, currentDatasetId, currentScale, currentType);
+  }
+
+  function selectProvider(provider) {
+    const current = datasets.find(d => d.id === currentDatasetId);
+    const match = datasets.find(d =>
+      d.provider === provider &&
+      (!current ||
+        (d.symbol === current.symbol &&
+         d.kind === current.kind &&
+         d.currency === current.currency &&
+         d.interval === current.interval))
+    );
+
+    if (match) {
+      selectDataset(match.id);
+    } else {
+      pushLog({
+        level: 'warn',
+        msg: 'provider_unavailable',
+        ts: Date.now(),
+        data: { provider, interval: current?.interval || null }
+      });
+    }
+  }
+
+  function selectInterval(interval) {
+    const current = datasets.find(d => d.id === currentDatasetId);
+    if (!current) return;
+
+    const match = findSiblingDataset(datasets, current, interval);
+
+    if (match) {
+      selectDataset(match.id);
+      return;
+    }
+
+    pushLog({
+      level: 'warn',
+      msg: 'dataset_interval_unavailable',
+      ts: Date.now(),
+      data: { datasetId: currentDatasetId, requestedInterval: interval }
+    });
   }
 
   function setScale(scale) {
@@ -75,24 +126,10 @@ export async function setupControls(engine, tableModal) {
     void sync(engine, currentDatasetId, currentScale, currentType, { forceRefresh: true });
   });
 
-  datasetSelect.addEventListener('change', e => selectDataset(e.target.value));
+  providerSelect.addEventListener('change', e => selectProvider(e.target.value));
 
-  tfSelect.addEventListener('change', e => {
-    const interval = tfToInterval(e.target.value);
-    const current = datasets.find(d => d.id === currentDatasetId);
-    const match = current ? findSiblingDataset(datasets, current, interval) : null;
-
-    if (match) {
-      selectDataset(match.id);
-    } else {
-      pushLog({
-        level: 'warn',
-        msg: 'dataset_interval_unavailable',
-        ts: Date.now(),
-        data: { datasetId: currentDatasetId, requestedInterval: interval }
-      });
-      tfSelect.value = current ? intervalToTf(current.interval) : '1d';
-    }
+  document.querySelectorAll('#tf-buttons button[data-interval]').forEach(button => {
+    button.addEventListener('click', () => selectInterval(button.dataset.interval));
   });
 
   document.getElementById('btn-table').addEventListener('click', () => {
@@ -106,12 +143,11 @@ export async function setupControls(engine, tableModal) {
 
   try {
     datasets = await fetchDatasets();
-    populateDatasets(datasetSelect);
+    populateProviders(providerSelect);
 
     const preferred = datasets.find(d => d.id === 'btc-usd-yahoo-1d') || datasets[0];
     if (!preferred) throw new Error('Catálogo de datasets vazio');
 
-    datasetSelect.value = preferred.id;
     selectDataset(preferred.id);
   } catch (e) {
     document.getElementById('status').textContent = 'Falha no catálogo';
