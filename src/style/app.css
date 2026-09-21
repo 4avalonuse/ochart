@@ -349,3 +349,24 @@ canvas{ background:var(--surface); }
 .box.metrics {
   margin-top: 12px;
 }
+
+
+/* UX: fonte primeiro, timeframe como controle primário */
+.chart-controls{ align-items:center; }
+.chart-controls .timeframe-control .seg{ min-width:240px; }
+.chart-controls #tf-buttons button{ min-width:42px; font-weight:600; }
+.chart-controls #sel-provider{ min-width:145px; }
+
+@media (max-width: 700px){
+  .chart-controls{ gap:7px; }
+  .chart-controls .timeframe-control{ width:100%; justify-content:space-between; }
+  .chart-controls .timeframe-control .seg{
+    flex:1 1 auto;
+    min-width:0;
+  }
+  .chart-controls #tf-buttons button{
+    flex:1 1 0;
+    min-width:0;
+    padding:6px 7px;
+  }
+}
