@@ -787,3 +787,160 @@ body:not(.chart-focus) #drawing-toolbar{ display:none !important; }
     display:grid;
   }
 }
+
+/* =========================================================
+   10) MOBILE REWORK — compact professional toolbar
+   ========================================================= */
+@media (max-width:900px){
+  .chart-controls{
+    display:flex !important;
+    flex-direction:column;
+    width:100%;
+    box-sizing:border-box;
+    gap:6px;
+    overflow:visible !important;
+    padding:7px;
+  }
+  .control-group{
+    width:100%;
+    box-sizing:border-box;
+    display:flex;
+    align-items:center;
+    flex-wrap:nowrap;
+    gap:6px;
+    min-width:0;
+    padding:7px;
+    overflow:hidden;
+  }
+  .control-caption{
+    width:auto;
+    flex:0 0 auto;
+    font-size:9px;
+    letter-spacing:.4px;
+  }
+  .control-group .inline{
+    flex:0 1 auto;
+    min-width:0;
+    gap:5px;
+  }
+  .control-group label{
+    font-size:12px;
+    white-space:nowrap;
+  }
+  .control-market{
+    flex-wrap:wrap;
+  }
+  .control-market .control-caption{
+    width:100%;
+  }
+  .control-market .inline{
+    flex:1 1 0;
+  }
+  .control-market .timeframe-control{
+    width:100%;
+    flex:1 1 100%;
+  }
+  .control-market #sel-provider{
+    min-width:0;
+    width:100%;
+  }
+  .control-market #tf-buttons{
+    min-width:0;
+    width:100%;
+    display:flex;
+  }
+  .control-market #tf-buttons button{
+    flex:1 1 0;
+    min-width:0;
+    min-height:36px;
+    padding:5px 4px;
+  }
+  .control-data{
+    flex-wrap:wrap;
+  }
+  .control-data .control-caption{
+    width:100%;
+  }
+  .control-data #ow{
+    width:100%;
+    max-width:100%;
+    overflow:hidden;
+  }
+  .control-data #ow > *{
+    max-width:100%;
+    box-sizing:border-box;
+  }
+  .control-system{
+    flex-wrap:nowrap;
+  }
+  .control-system .control-caption{
+    display:none;
+  }
+  .control-system .status-chip{
+    flex:1 1 auto;
+    min-width:0;
+  }
+  .control-system #status{
+    display:none;
+  }
+  .control-system #api-status{
+    font-size:10px;
+  }
+
+  .chart-main{
+    margin-top:6px;
+    height:calc(100svh - 300px) !important;
+    min-height:390px !important;
+  }
+}
+
+/* Very small screens: make the toolbar even lighter. */
+@media (max-width:520px){
+  .control-data{ display:none; }
+  .chart-main{
+    height:calc(100svh - 190px) !important;
+    min-height:420px !important;
+  }
+  .chart-controls{
+    background:transparent;
+    border:none;
+    padding:0;
+  }
+  .control-group{
+    background:var(--surface);
+    border-radius:9px;
+  }
+  .control-market{
+    padding:6px;
+  }
+  .control-market .control-caption{
+    display:none;
+  }
+  .control-market .inline:first-of-type{
+    flex:0 0 44%;
+  }
+  .control-market .inline:first-of-type label{
+    display:none;
+  }
+  .control-market .timeframe-control{
+    flex:1 1 56%;
+    width:auto;
+  }
+  .control-market .timeframe-control label{
+    display:none;
+  }
+  .control-group .seg button{
+    min-height:34px;
+  }
+}
+
+/* Keep the focus toolbar compact on mobile too. */
+@media (max-width:900px){
+  body.chart-focus .chart-controls{
+    left:6px;
+    right:6px;
+    width:auto;
+    max-height:none;
+    overflow:visible !important;
+  }
+}
