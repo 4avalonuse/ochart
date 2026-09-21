@@ -20,13 +20,13 @@ test('preserves OHLC decimal precision', () => {
 test('outlier repair is opt-in and disabled by default', () => {
   const raw = [
     { t: 1700000000000, o: 100, h: 101, l: 99, c: 100, v: 10 },
-    { t: 1700000060000, o: 100, h: 1000, l: 99, c: 1000, v: 20 },
-    { t: 1700000120000, o: 1000, h: 1001, l: 999, c: 100, v: 10 }
+    { t: 1700000060000, o: 100, h: 2000, l: 99, c: 2000, v: 20 },
+    { t: 1700000120000, o: 2000, h: 2001, l: 1999, c: 100, v: 10 }
   ];
 
   const defaultResult = new DataSanitizer().sanitize(raw);
   assert.equal(defaultResult.stats.outliersDetected, 0);
-  assert.equal(defaultResult.data[1].c, 1000);
+  assert.equal(defaultResult.data[1].c, 2000);
 
   const optInResult = new DataSanitizer({ detectOutliers: true }).sanitize(raw);
   assert.equal(optInResult.stats.outliersDetected, 1);
