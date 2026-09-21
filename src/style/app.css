@@ -776,3 +776,14 @@ body.chart-focus .chart-main{ padding:8px; }
   #toast-root{ top:8px; }
   #hud-filter,#hud-copy,#hud-clear{ display:none; }
 }
+
+/* Final hierarchy override: normal mode keeps the essential controls visible. */
+body:not(.chart-focus) .chart-controls{ display:grid; }
+body:not(.chart-focus) .chart-shell{ padding-left:0; }
+body:not(.chart-focus) #drawing-toolbar{ display:none !important; }
+
+@media (max-width:700px){
+  body:not(.chart-focus) .chart-controls{
+    display:grid;
+  }
+}
