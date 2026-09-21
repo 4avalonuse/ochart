@@ -16,8 +16,8 @@ jobs:
         with:
           node-version: 22
 
-      - name: Test local catalog rules
-        run: node --test tests/dataset-utils.test.js
+      - name: Test local catalog and sanitizer rules
+        run: node --test tests/dataset-utils.test.js tests/sanitizer.test.js
 
       - name: Test live Data API contract
         run: node --test tests/data-api-contract.test.js
