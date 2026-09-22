@@ -944,3 +944,349 @@ body:not(.chart-focus) #drawing-toolbar{ display:none !important; }
     overflow:visible !important;
   }
 }
+
+/* =========================================================
+   11) OCHART RESEARCH TERMINAL — UI FOUNDATION
+   The chart is the workspace. Controls are contextual.
+   ========================================================= */
+:root{
+  --ochart-header:56px;
+  --ochart-nav:58px;
+  --ochart-drawer:360px;
+  --ochart-gap:10px;
+}
+body{
+  margin:0 !important;
+  min-height:100svh;
+  background:var(--surface) !important;
+  color:var(--text);
+  overflow-x:hidden;
+}
+.ochart-topbar{
+  height:var(--ochart-header);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:0 18px;
+  border-bottom:1px solid var(--border);
+  background:color-mix(in srgb,var(--surface) 94%,transparent);
+  backdrop-filter:blur(12px);
+  position:relative;
+  z-index:50;
+}
+.ochart-brand{ display:flex; align-items:center; gap:9px; min-width:0; }
+.ochart-brand>div{ display:flex; align-items:baseline; gap:7px; }
+.ochart-brand strong{ font-size:15px; letter-spacing:.1px; }
+.ochart-brand span:not(.ochart-mark):not(.brand-version){ font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.55px; }
+.ochart-mark{
+  width:30px; height:30px; border-radius:9px;
+  display:grid; place-items:center;
+  background:var(--button-active); color:var(--surface);
+  font-weight:800; font-size:14px;
+}
+.brand-version{ font-size:9px !important; color:var(--text-muted); }
+.ochart-context{
+  color:var(--text-muted); font-size:10px; letter-spacing:1px;
+  font-weight:700;
+}
+.ochart-top-actions{ display:flex; gap:6px; }
+.icon-btn{
+  width:36px; height:36px; padding:0 !important;
+  display:grid; place-items:center;
+  border-radius:9px !important;
+  font-size:17px !important;
+}
+.ochart-workspace{
+  width:100%;
+  height:calc(100svh - var(--ochart-header) - var(--ochart-nav));
+  padding:var(--ochart-gap);
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.chart-main.box{
+  flex:1 1 auto;
+  min-height:0;
+  height:auto !important;
+  margin:0 !important;
+  padding:5px !important;
+  border-radius:12px;
+  overflow:hidden;
+}
+.chart-shell{
+  height:100% !important;
+  min-height:0;
+  padding-left:0 !important;
+  overflow:hidden;
+}
+.chart-shell canvas{
+  width:100% !important;
+  height:100% !important;
+}
+.market-strip{
+  left:12px !important;
+  top:12px !important;
+  max-width:calc(100% - 100px);
+  padding:8px 10px !important;
+  border-radius:9px !important;
+  box-shadow:0 6px 20px rgba(0,0,0,.10);
+}
+.market-value{ font-size:17px !important; }
+.market-change{ font-size:11px !important; }
+.market-meta{ font-size:9px !important; }
+.chart-quick-controls{
+  top:12px !important;
+  right:12px !important;
+  z-index:12 !important;
+}
+.chart-quick-controls button{
+  width:36px !important;
+  height:36px !important;
+  background:color-mix(in srgb,var(--surface) 88%,transparent) !important;
+  color:var(--text) !important;
+}
+.mobile-chart-controls{
+  left:12px !important;
+  right:auto !important;
+  bottom:12px !important;
+  top:auto !important;
+  z-index:12 !important;
+}
+.metrics{
+  flex:0 0 42px;
+  height:42px;
+  margin:0 !important;
+  padding:0 12px !important;
+  display:flex !important;
+  align-items:center;
+  gap:28px;
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+}
+.metrics>div{ display:flex; align-items:baseline; gap:7px; }
+.metrics span{ color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:.45px; }
+.metrics strong{ font-size:13px; font-weight:650; }
+.metrics .price-value:before{ content:"$"; }
+
+/* Research navigation */
+.research-nav{
+  height:var(--ochart-nav);
+  position:fixed;
+  left:50%;
+  bottom:8px;
+  transform:translateX(-50%);
+  z-index:80;
+  display:flex;
+  align-items:center;
+  gap:3px;
+  padding:4px;
+  border:1px solid var(--border);
+  border-radius:13px;
+  background:color-mix(in srgb,var(--surface-alt) 94%,transparent);
+  box-shadow:0 8px 30px rgba(0,0,0,.16);
+  backdrop-filter:blur(14px);
+}
+.research-nav-item{
+  min-width:92px;
+  height:42px;
+  border:0 !important;
+  border-radius:9px !important;
+  background:transparent !important;
+  color:var(--text-muted) !important;
+  font-size:12px;
+  font-weight:650;
+}
+.research-nav-item:hover{ background:var(--button-hover) !important; }
+.research-nav-item.active{
+  background:var(--button-active) !important;
+  color:var(--surface) !important;
+}
+
+/* Contextual drawer */
+.research-drawer{
+  position:fixed;
+  top:var(--ochart-header);
+  right:0;
+  bottom:0;
+  width:min(var(--ochart-drawer),92vw);
+  z-index:120;
+  background:var(--surface-alt);
+  border-left:1px solid var(--border);
+  box-shadow:-14px 0 40px rgba(0,0,0,.18);
+  transform:translateX(105%);
+  transition:transform .22s ease;
+  display:flex;
+  flex-direction:column;
+}
+.research-drawer.open{ transform:translateX(0); }
+.drawer-head{
+  min-height:68px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 14px;
+  border-bottom:1px solid var(--border);
+}
+.drawer-kicker{
+  display:block; color:var(--text-muted);
+  font-size:9px; letter-spacing:1px; font-weight:750;
+  margin-bottom:2px;
+}
+.drawer-head strong{ font-size:16px; }
+.drawer-close{
+  width:36px; height:36px; padding:0 !important;
+  display:grid; place-items:center;
+  font-size:24px !important;
+  border-radius:9px !important;
+}
+.drawer-body{
+  overflow:auto;
+  padding:14px;
+}
+.drawer-section{ padding-bottom:18px; }
+.drawer-section[hidden]{ display:none !important; }
+.drawer-section h3{
+  margin:0 0 12px;
+  font-size:11px;
+  color:var(--text-muted);
+  text-transform:uppercase;
+  letter-spacing:.65px;
+}
+.field{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+.field label{ font-size:11px; color:var(--text-muted); }
+.field select{ width:100%; min-height:40px; border-radius:9px; }
+.seg.full{ display:flex; width:100%; }
+.seg.full button{ flex:1 1 0; min-height:40px; }
+.drawer-note{
+  padding:10px 11px;
+  border:1px solid var(--border);
+  border-radius:9px;
+  color:var(--text-muted);
+  font-size:11px;
+  line-height:1.45;
+  margin-top:8px;
+}
+.drawer-action,.drawer-primary{
+  width:100%;
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:7px;
+  border-radius:9px !important;
+}
+.drawer-primary{
+  justify-content:center;
+  background:var(--button-active) !important;
+  color:var(--surface) !important;
+}
+.drawer-action span{ color:var(--text-muted); font-size:18px; }
+.data-status{
+  display:flex; flex-direction:column; gap:4px;
+  margin-top:14px;
+  padding-top:12px;
+  border-top:1px solid var(--border);
+  color:var(--text-muted);
+  font-size:10px;
+}
+#ow{ width:100%; }
+#ow>*{ max-width:100%; }
+
+/* Hide legacy control surface; functionality now lives in the drawer. */
+.chart-controls{ display:none !important; }
+body:not(.chart-focus) #drawing-toolbar{ display:none !important; }
+
+/* Fullscreen = chart only, not an admin panel. */
+body.chart-focus .ochart-topbar,
+body.chart-focus .research-nav,
+body.chart-focus .metrics{ display:none !important; }
+body.chart-focus .ochart-workspace{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100svh;
+  padding:5px;
+  z-index:90;
+}
+body.chart-focus .chart-main{ border-radius:0; }
+body.chart-focus .market-strip{ top:14px !important; left:14px !important; }
+
+/* Drawing tools remain a secondary overlay. */
+body.chart-tools-open #drawing-toolbar{
+  display:block !important;
+  position:absolute !important;
+  left:8px !important;
+  top:8px !important;
+  width:min(300px,calc(100% - 16px)) !important;
+  height:auto !important;
+  max-height:calc(100% - 16px) !important;
+  z-index:30 !important;
+}
+body.chart-tools-open .chart-shell{ padding-left:0 !important; }
+
+/* Mobile */
+@media (max-width:700px){
+  :root{ --ochart-header:52px; --ochart-nav:54px; }
+  .ochart-topbar{ padding:0 9px; }
+  .ochart-brand>div{ display:block; }
+  .ochart-brand>div span:not(.brand-version){ display:none; }
+  .ochart-brand strong{ font-size:14px; }
+  .ochart-context{ display:none; }
+  .icon-btn{ width:36px; height:36px; }
+  .ochart-workspace{ padding:5px; gap:2px; }
+  .chart-main.box{ padding:2px !important; border-radius:10px; }
+  .market-strip{
+    left:7px !important; top:7px !important;
+    max-width:calc(100% - 62px);
+    padding:6px 8px !important;
+  }
+  .market-name{ font-size:13px !important; }
+  .market-value{ font-size:15px !important; }
+  .market-meta{ display:none !important; }
+  .chart-quick-controls{ top:7px !important; right:7px !important; }
+  .chart-quick-controls button{ width:38px !important; height:38px !important; }
+  .mobile-chart-controls{ left:7px !important; bottom:7px !important; }
+  .mobile-chart-controls button{ min-width:40px !important; height:38px !important; }
+  .metrics{
+    flex:0 0 30px;
+    height:30px;
+    padding:0 5px !important;
+    gap:18px;
+  }
+  .metrics span{ font-size:8px; }
+  .metrics strong{ font-size:11px; }
+  .research-nav{
+    left:5px; right:5px; bottom:5px; transform:none;
+    width:auto; height:48px;
+    justify-content:stretch;
+    border-radius:11px;
+  }
+  .research-nav-item{
+    flex:1 1 0; min-width:0; height:38px;
+    font-size:10px;
+  }
+  .research-drawer{
+    top:auto;
+    left:5px;
+    right:5px;
+    bottom:5px;
+    width:auto;
+    max-height:78svh;
+    border:1px solid var(--border);
+    border-radius:14px;
+    transform:translateY(calc(100% + 20px));
+  }
+  .research-drawer.open{ transform:translateY(0); }
+  .drawer-head{ min-height:58px; }
+  .drawer-body{ padding:12px; }
+  body.drawer-open .research-nav{ opacity:.2; pointer-events:none; }
+  body.chart-focus .research-nav{ display:none !important; }
+  body.chart-focus .ochart-workspace{ padding:0; }
+  body.chart-focus .chart-main{ border-radius:0; }
+}
+
+/* Small screens: keep the navigation meaningful, never squeeze controls. */
+@media (max-width:380px){
+  .research-nav-item{ font-size:9px; padding:0 3px; }
+  .market-symbol{ display:none; }
+}
