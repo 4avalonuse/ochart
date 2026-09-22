@@ -3,12 +3,11 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>OChart — visualizador</title>
+  <title>OChart</title>
   <link rel="icon" href="data:image/svg+xml,
 <svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22>
   <text x=%224%22 y=%2212%22 font-size=%2212%22>📈</text>
 </svg>">
-
   <script src="./libs/chart.umd.js"></script>
   <script src="./libs/chartjs-adapter-date-fns.bundle.js"></script>
   <script src="./libs/chartjs-chart-financial.min.js"></script>
@@ -17,105 +16,144 @@
   <link rel="stylesheet" href="./src/style/app.css">
 </head>
 <body class="ui-surface">
-
-  <header class="box o-version" data-ochart-version>OChart</header>
+  <header class="ochart-topbar">
+    <div class="ochart-brand">
+      <span class="ochart-mark">O</span>
+      <div>
+        <strong>OChart</strong>
+        <span>research terminal</span>
+      </div>
+    </div>
+    <div class="ochart-context">VISUALIZAR · INVESTIGAR</div>
+    <div class="ochart-top-actions">
+      <button id="btn-theme" class="icon-btn" title="Tema" aria-label="Tema">☾</button>
+      <button id="chart-open-focus" class="icon-btn" title="Tela cheia" aria-label="Tela cheia">⛶</button>
+    </div>
+  </header>
 
   <script type="module">
     import { applyVersionUI } from './src/core/version.js';
     applyVersionUI();
   </script>
 
-  <section class="box row chart-controls" aria-label="Controles do gráfico">
-    <div class="control-group control-market">
-      <span class="control-caption">Mercado</span>
-      <div class="inline">
-        <label for="sel-provider">Fonte</label>
-        <select id="sel-provider" aria-label="Fonte de dados"></select>
-      </div>
-      <div class="inline timeframe-control">
-        <label>Período</label>
-        <div id="tf-buttons" class="seg" role="group" aria-label="Período">
-          <button type="button" data-interval="1m" aria-pressed="false">1m</button>
-          <button type="button" data-interval="1h" aria-pressed="false">1h</button>
-          <button type="button" data-interval="1d" aria-pressed="false">1d</button>
-          <button type="button" data-interval="1w" aria-pressed="false">1w</button>
-          <button type="button" data-interval="1M" aria-pressed="false">1M</button>
+  <main class="ochart-workspace">
+    <section class="chart-main box" aria-label="Mercado e gráfico">
+      <div class="chart-shell">
+        <div class="market-strip" aria-label="Resumo do mercado">
+          <div class="market-main">
+            <div id="market-name" class="market-name">Bitcoin / USD</div>
+            <div id="market-symbol" class="market-symbol">BTC-USD</div>
+          </div>
+          <div class="market-price">
+            <div id="k-close" class="market-value">—</div>
+            <div id="k-change" class="market-change">—</div>
+          </div>
+          <div class="market-meta">
+            <span id="market-provider">Fonte · —</span>
+            <span id="market-interval">Período · —</span>
+            <span id="market-updated">Atualizado · —</span>
+          </div>
         </div>
+
+        <div class="chart-quick-controls" aria-label="Controles rápidos">
+          <button type="button" id="chart-open-tools" aria-label="Abrir ferramentas" title="Ferramentas">☷</button>
+        </div>
+
+        <div class="mobile-chart-controls" aria-label="Controles do gráfico">
+          <button type="button" id="chart-zoom-out" aria-label="Diminuir zoom">−</button>
+          <button type="button" id="chart-zoom-fit" aria-label="Mostrar tudo">Fit</button>
+          <button type="button" id="chart-zoom-in" aria-label="Aumentar zoom">+</button>
+        </div>
+        <canvas id="ch"></canvas>
       </div>
+    </section>
+
+    <section class="box metrics" aria-label="Resumo estatístico">
+      <div><span>Máx</span><strong id="k-max">—</strong></div>
+      <div><span>Mín</span><strong id="k-min">—</strong></div>
+    </section>
+  </main>
+
+  <nav class="research-nav" aria-label="Áreas do OChart">
+    <button class="research-nav-item active" data-panel="market">Mercado</button>
+    <button class="research-nav-item" data-panel="studies">Estudos</button>
+    <button class="research-nav-item" data-panel="data">Dados</button>
+    <button class="research-nav-item" data-panel="tools">Ferramentas</button>
+  </nav>
+
+  <aside id="research-drawer" class="research-drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <div>
+        <span class="drawer-kicker">OCHART</span>
+        <strong id="drawer-title">Mercado</strong>
+      </div>
+      <button id="drawer-close" class="drawer-close" aria-label="Fechar">×</button>
     </div>
 
-    <div class="control-group">
-      <span class="control-caption">Gráfico</span>
-      <div class="inline">
-        <label class="muted">Tipo</label>
-        <div class="seg">
-          <button id="btn-type-line" class="active">Linha</button>
-          <button id="btn-type-candle">Velas</button>
+    <div class="drawer-body">
+      <section class="drawer-section drawer-market-panel" data-drawer-panel="market">
+        <h3>Mercado</h3>
+        <div class="field">
+          <label for="sel-provider">Fonte de dados</label>
+          <select id="sel-provider" aria-label="Fonte de dados"></select>
         </div>
-      </div>
-      <div class="inline">
-        <label class="muted">Escala</label>
-        <div class="seg">
-          <button id="btn-scale-linear">Linear</button>
-          <button id="btn-scale-log" class="active">Log</button>
+        <div class="field">
+          <label>Período</label>
+          <div id="tf-buttons" class="seg full" role="group" aria-label="Período">
+            <button type="button" data-interval="1m" aria-pressed="false">1m</button>
+            <button type="button" data-interval="1h" aria-pressed="false">1h</button>
+            <button type="button" data-interval="1d" aria-pressed="false">1D</button>
+            <button type="button" data-interval="1w" aria-pressed="false">1W</button>
+            <button type="button" data-interval="1M" aria-pressed="false">1M</button>
+          </div>
         </div>
-      </div>
+        <div class="drawer-note">O gráfico é o centro do estudo. Fonte e período definem o conjunto de dados analisado.</div>
+      </section>
+
+      <section class="drawer-section" data-drawer-panel="studies">
+        <h3>Estudos</h3>
+        <button class="drawer-action" type="button" data-coming="Indicadores">Indicadores <span>›</span></button>
+        <button class="drawer-action" type="button" data-coming="Estatística">Estatística <span>›</span></button>
+        <button class="drawer-action" type="button" data-coming="Comparações">Comparações <span>›</span></button>
+        <button class="drawer-action" type="button" data-coming="Eventos">Eventos <span>›</span></button>
+        <div class="drawer-note">Esta é a próxima camada do OChart: transformar visualização em investigação.</div>
+      </section>
+
+      <section class="drawer-section" data-drawer-panel="data">
+        <h3>Dados</h3>
+        <div class="field">
+          <label>Janela do histórico</label>
+          <div id="ow"></div>
+        </div>
+        <button id="btn-table" class="drawer-primary" type="button">Abrir tabela</button>
+        <button id="btn-sync" class="drawer-action" type="button">Atualizar dados <span>↻</span></button>
+        <div class="data-status">
+          <span id="api-status" data-state="offline">Cloudflare · —</span>
+          <span id="status">—</span>
+        </div>
+      </section>
+
+      <section class="drawer-section" data-drawer-panel="tools">
+        <h3>Ferramentas</h3>
+        <div class="field">
+          <label>Tipo de gráfico</label>
+          <div class="seg full">
+            <button id="btn-type-line" class="active">Linha</button>
+            <button id="btn-type-candle">Velas</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Escala</label>
+          <div class="seg full">
+            <button id="btn-scale-linear">Linear</button>
+            <button id="btn-scale-log" class="active">Log</button>
+          </div>
+        </div>
+        <button class="drawer-action" type="button" id="open-drawings">Desenhos e objetos <span>›</span></button>
+        <button class="drawer-action" type="button" id="open-diagnostics">Diagnóstico <span>›</span></button>
+      </section>
     </div>
-
-    <div class="control-group control-data">
-      <span class="control-caption">Dados</span>
-      <div class="inline">
-        <label class="muted">Janela</label>
-        <div id="ow"></div>
-      </div>
-      <button id="btn-table">Tabela</button>
-      <button id="btn-sync">Atualizar</button>
-    </div>
-
-    <div class="control-group control-system">
-      <span class="control-caption">Sistema</span>
-      <button id="btn-theme"><span>🌙</span> Tema</button>
-      <span id="api-status" class="status-chip" data-state="offline">Cloudflare · —</span>
-      <span id="status" class="status-chip">—</span>
-    </div>
-  </section>
-
-  <section class="box chart-main">
-    <div class="chart-shell">
-      <div class="market-strip" aria-label="Resumo do mercado">
-        <div class="market-main">
-          <div id="market-name" class="market-name">Bitcoin / USD</div>
-          <div id="market-symbol" class="market-symbol">BTC-USD</div>
-        </div>
-        <div class="market-price">
-          <div id="k-close" class="market-value">—</div>
-          <div id="k-change" class="market-change">—</div>
-        </div>
-        <div class="market-meta">
-          <span id="market-provider">Fonte · —</span>
-          <span id="market-interval">Período · —</span>
-          <span id="market-updated">Atualizado · —</span>
-        </div>
-      </div>
-
-      <div class="chart-quick-controls" aria-label="Controles rápidos do gráfico">
-        <button type="button" id="chart-open-focus" aria-label="Abrir gráfico completo" title="Tela cheia">⛶</button>
-        <button type="button" id="chart-open-tools" aria-label="Abrir opções" title="Opções do gráfico">☷</button>
-      </div>
-
-      <div class="mobile-chart-controls" aria-label="Controles do gráfico">
-        <button type="button" id="chart-zoom-out" aria-label="Diminuir zoom">−</button>
-        <button type="button" id="chart-zoom-fit" aria-label="Mostrar tudo">Fit</button>
-        <button type="button" id="chart-zoom-in" aria-label="Aumentar zoom">+</button>
-      </div>
-      <canvas id="ch"></canvas>
-    </div>
-  </section>
-
-  <section class="box row metrics" aria-label="Estatísticas da janela">
-    <div><div class="muted">Máx (janela)</div><div id="k-max" class="big price-value">—</div></div>
-    <div><div class="muted">Mín (janela)</div><div id="k-min" class="big price-value">—</div></div>
-  </section>
+  </aside>
 
   <div id="toast-root" aria-live="polite"></div>
   <div id="dev-hud-root"></div>
