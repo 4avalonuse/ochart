@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jiu-Jitsu — OChart Teste</title>
+<style>
+  :root{
+    --red:#d71920; --red2:#7f0b12; --blue:#1457d9; --blue2:#071d55;
+    --ink:#f5f5f5; --muted:#b9bec8; --bg:#08090c;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; color:var(--ink); background:var(--bg);
+    font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;
+    overflow-x:hidden;
+  }
+  body:before{
+    content:""; position:fixed; inset:0; pointer-events:none; opacity:.22;
+    background:
+      radial-gradient(circle at 15% 20%,var(--red) 0,transparent 28%),
+      radial-gradient(circle at 85% 25%,var(--blue) 0,transparent 28%);
+  }
+  header{
+    min-height:72vh; display:flex; align-items:center; justify-content:center;
+    position:relative; padding:40px 18px;
+  }
+  .arena{
+    width:min(1050px,100%); border:1px solid #ffffff18; border-radius:28px;
+    overflow:hidden; background:#0c0d12dd; box-shadow:0 30px 90px #000;
+  }
+  .split{
+    display:grid; grid-template-columns:1fr 1fr; min-height:130px;
+    position:relative; overflow:hidden;
+  }
+  .side{padding:30px 26px; position:relative}
+  .red{background:linear-gradient(135deg,#6f080e,#e3212a)}
+  .blue{background:linear-gradient(135deg,#071b4e,#1764ee)}
+  .side h2{margin:0;font-size:clamp(28px,6vw,54px);letter-spacing:-2px}
+  .dragon{position:absolute; right:18px; bottom:-10px; font-size:90px; opacity:.28; transform:scaleX(-1)}
+  .blue .dragon{transform:none}
+  .hero{position:relative}
+  .hero img{width:100%;height:min(54vw,520px);object-fit:cover;display:block;filter:saturate(.8) contrast(1.08)}
+  .hero:after{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(90deg,#d7192040,#00000000 45%,#1457d940);
+    mix-blend-mode:screen;
+  }
+  .content{padding:32px clamp(22px,5vw,56px) 42px}
+  .eyebrow{color:#ff4a50;font-weight:800;letter-spacing:2px;text-transform:uppercase;font-size:12px}
+  h1{font-size:clamp(42px,8vw,78px);line-height:.9;margin:8px 0 18px;letter-spacing:-4px}
+  .lead{font-size:clamp(18px,3vw,23px);line-height:1.5;color:#dfe2e8;max-width:780px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:28px}
+  .card{padding:20px;border:1px solid #ffffff16;border-radius:16px;background:#ffffff06}
+  .card b{display:block;font-size:18px;margin-bottom:7px}
+  .card span{color:var(--muted);line-height:1.45;font-size:14px}
+  footer{padding:0 22px 28px;color:#777d88;font-size:11px;text-align:center}
+  @media(max-width:650px){.grid{grid-template-columns:1fr}.split{min-height:105px}.side{padding:22px 18px}.dragon{font-size:65px}}
+</style>
+</head>
+<body>
+<header>
+  <main class="arena">
+    <div class="split">
+      <section class="side red"><h2>FORÇA</h2><div class="dragon">🐉</div></section>
+      <section class="side blue"><h2>TÉCNICA</h2><div class="dragon">🐉</div></section>
+    </div>
+    <div class="hero">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/2/22/GABRIEL_VELLA_vs_ROMINHO_51.jpg" alt="Dois atletas em uma luta de Brazilian Jiu-Jitsu">
+    </div>
+    <div class="content">
+      <div class="eyebrow">OChart — página temporária</div>
+      <h1>JIU-JITSU</h1>
+      <p class="lead">Uma arte marcial e esporte de combate centrado no grappling e, especialmente, na luta no chão. O jogo combina controle, posição, alavancas, defesa e finalizações.</p>
+      <div class="grid">
+        <div class="card"><b>Controle</b><span>Posição antes da pressa: criar vantagem e reduzir os espaços.</span></div>
+        <div class="card"><b>Alavanca</b><span>Técnica e posicionamento permitem transformar pequenas vantagens em grandes efeitos.</span></div>
+        <div class="card"><b>Adaptação</b><span>Cada movimento do adversário muda o problema — e abre novas possibilidades.</span></div>
+      </div>
+    </div>
+    <footer>
+      Imagem: John Lamonica, via Wikimedia Commons — CC BY-SA 3.0.
+      Página criada apenas para teste visual do OChart.
+    </footer>
+  </main>
+</header>
+</body>
+</html>
