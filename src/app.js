@@ -31,29 +31,82 @@ function boot() {
   document.getElementById('chart-zoom-in')?.addEventListener('click', () => engine.zoom.zoomBy(0.8));
   document.getElementById('chart-zoom-fit')?.addEventListener('click', () => engine.resetZoom());
 
-  // Modo foco: página simples -> gráfico ampliado com todas as opções.
+  // Interface de pesquisa: gaveta independente do modo tela cheia.
   const focusBtn = document.getElementById('chart-open-focus');
   const toolsBtn = document.getElementById('chart-open-tools');
+  const drawer = document.getElementById('research-drawer');
+  const drawerClose = document.getElementById('drawer-close');
   const chartMain = document.querySelector('.chart-main');
 
   const setFocus = open => {
     document.body.classList.toggle('chart-focus', open);
-    if (!open) document.body.classList.remove('chart-tools-open');
     requestAnimationFrame(() => engine.chart?.resize());
   };
 
-  focusBtn?.addEventListener('click', () => setFocus(true));
-  toolsBtn?.addEventListener('click', () => {
-    if (!document.body.classList.contains('chart-focus')) setFocus(true);
-    document.body.classList.toggle('chart-tools-open');
+  const setDrawer = (open, panel = 'market') => {
+    drawer?.classList.toggle('open', open);
+    drawer?.setAttribute('aria-hidden', String(!open));
+    document.body.classList.toggle('drawer-open', open);
+    if (open) selectPanel(panel);
+    requestAnimationFrame(() => engine.chart?.resize());
+  };
+
+  const selectPanel = panel => {
+    document.querySelectorAll('.research-nav-item').forEach(button => {
+      button.classList.toggle('active', button.dataset.panel === panel);
+    });
+    document.querySelectorAll('[data-drawer-panel]').forEach(section => {
+      section.hidden = section.dataset.drawerPanel !== panel;
+    });
+    const title = document.getElementById('drawer-title');
+    if (title) title.textContent = panel === 'studies' ? 'Estudos' : panel === 'data' ? 'Dados' : panel === 'tools' ? 'Ferramentas' : 'Mercado';
+  };
+
+  focusBtn?.addEventListener('click', () => setFocus(!document.body.classList.contains('chart-focus')));
+  toolsBtn?.addEventListener('click', () => setDrawer(true, 'tools'));
+  drawerClose?.addEventListener('click', () => setDrawer(false));
+
+  document.querySelectorAll('.research-nav-item').forEach(button => {
+    button.addEventListener('click', () => {
+      const panel = button.dataset.panel;
+      setDrawer(true, panel);
+    });
   });
 
-  chartMain?.addEventListener('dblclick', () => {
-    setFocus(!document.body.classList.contains('chart-focus'));
+  document.querySelectorAll('[data-coming]').forEach(button => {
+    button.addEventListener('click', () => {
+      const name = button.dataset.coming;
+      const event = new CustomEvent('ochart:toast', { detail: { message: name + ' será incorporado à camada de Estudos.', type: 'info' } });
+      document.dispatchEvent(event);
+    });
   });
+
+  document.getElementById('open-diagnostics')?.addEventListener('click', () => {
+    const hudToggle = document.getElementById('hud-toggle');
+    if (hudToggle) {
+      setDrawer(false);
+      hudToggle.click();
+    }
+  });
+
+  document.getElementById('open-drawings')?.addEventListener('click', () => {
+    setDrawer(false);
+    document.body.classList.add('chart-tools-open');
+    const toolbar = document.getElementById('drawing-toolbar');
+    if (toolbar) toolbar.style.display = 'block';
+  });
+
+  document.addEventListener('ochart:toast', event => {
+    window.dispatchEvent(new CustomEvent('ochart:show-toast', { detail: event.detail }));
+  });
+
+  chartMain?.addEventListener('dblclick', () => setFocus(!document.body.classList.contains('chart-focus')));
 
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape') setFocus(false);
+    if (event.key === 'Escape') {
+      if (document.body.classList.contains('drawer-open')) setDrawer(false);
+      else setFocus(false);
+    }
   });
 
   // Verifica o backend sem bloquear a inicialização do gráfico.
