@@ -18,3 +18,8 @@ export function showToast(message, type = 'info', duration = 3200) {
   clearTimeout(timer);
   timer = setTimeout(() => item.remove(), duration);
 }
+
+window.addEventListener('ochart:show-toast', event => {
+  const detail = event.detail || {};
+  showToast(detail.message || 'OChart', detail.type || 'info', detail.duration || 3200);
+});
