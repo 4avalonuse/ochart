@@ -24,7 +24,7 @@ export class ChartZoom {
     this.chart = chart;
     this._syncYViewportType();
     this._captureBounds();
-    this._bindTouch();
+    // DOM gestures são roteados pelo InteractionManager.
     return this;
   }
 
@@ -422,6 +422,132 @@ export class ChartZoom {
     canvas.addEventListener('touchmove', this._touch.move, { passive: false });
     canvas.addEventListener('touchend', this._touch.end, { passive: true });
     canvas.addEventListener('touchcancel', this._touch.end, { passive: true });
+  }
+
+  isPriceScalePointer(ev) {
+    const canvas = this.chart?.canvas;
+    return !!canvas && this._isPriceScaleTouch(ev, canvas);
+  }
+
+  handlePointerDown(ev, pointers = [ev]) {
+    if (!this.chart) return false;
+
+    const canvas = this.chart.canvas;
+    this._captureBounds();
+
+    if (pointers.length >= 2) {
+      const a = pointers[0];
+      const b = pointers[1];
+      const distance = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+      const scale = this.chart.scales?.x;
+      if (!scale || !Number.isFinite(distance) || distance <= 0) return false;
+
+      this._pan = null;
+      this._gestureTarget = 'pinch';
+      this._pinchState = {
+        distance,
+        min: Number(scale.min),
+        max: Number(scale.max),
+        centerX: (a.clientX + b.clientX) / 2,
+        rect: canvas.getBoundingClientRect()
+      };
+      ev.preventDefault();
+      return true;
+    }
+
+    const target = this._isPriceScaleTouch(ev, canvas) ? 'price-scale' : 'plot';
+    this._beginPan(ev, canvas, target);
+    return true;
+  }
+
+  handlePointerMove(ev, pointers = [ev]) {
+    if (!this.chart) return false;
+
+    if (pointers.length >= 2 && this._pinchState) {
+      const a = pointers[0];
+      const b = pointers[1];
+      const state = this._pinchState;
+      const distance = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+      if (!Number.isFinite(distance) || distance <= 0) return false;
+
+      const span = state.max - state.min;
+      if (!Number.isFinite(span) || span <= 0) return false;
+
+      const factor = state.distance / distance;
+      const centerPixel = state.centerX - state.rect.left;
+      const ratio = Math.max(0, Math.min(1, centerPixel / Math.max(1, state.rect.width)));
+      const centerValue = state.min + (state.max - state.min) * ratio;
+
+      let min = centerValue - (centerValue - state.min) * factor;
+      let max = centerValue + (state.max - centerValue) * factor;
+
+      const boundMin = Number.isFinite(this._bounds?.min) ? this._bounds.min : state.min;
+      const boundMax = Number.isFinite(this._bounds?.max) ? this._bounds.max : state.max;
+      const minSpan = Math.max((boundMax - boundMin) / 10000, 1);
+
+      if (max - min < minSpan) {
+        const mid = (min + max) / 2;
+        min = mid - minSpan / 2;
+        max = mid + minSpan / 2;
+      }
+      if (min < boundMin) { max += boundMin - min; min = boundMin; }
+      if (max > boundMax) { min -= max - boundMax; max = boundMax; }
+
+      min = Math.max(boundMin, min);
+      max = Math.min(boundMax, max);
+
+      ev.preventDefault();
+      this.chart.zoomScale('x', { min, max }, 'none');
+      return true;
+    }
+
+    if (!this._pan) return false;
+
+    const dx = ev.clientX - this._pan.startX;
+    const dy = ev.clientY - this._pan.startY;
+
+    if (this._gestureTarget === 'price-scale') {
+      this._scalePrice(ev, this.chart.canvas, dy, ev);
+      return true;
+    }
+
+    if (!this._gestureTarget && Math.hypot(dx, dy) > 6) {
+      this._gestureTarget = Math.abs(dx) >= Math.abs(dy) ? 'plot-x' : 'plot-y';
+    }
+
+    if (this._gestureTarget === 'plot-x') {
+      this._panTime(dx, ev);
+      return true;
+    }
+
+    if (this._gestureTarget === 'plot-y') {
+      this._panPrice(dy, ev);
+      return true;
+    }
+
+    return false;
+  }
+
+  handlePointerUp(ev, pointers = []) {
+    if (pointers.length >= 1) {
+      if (pointers.length === 1) {
+        this._beginPan(pointers[0], this.chart.canvas, this._isPriceScaleTouch(pointers[0], this.chart.canvas) ? 'price-scale' : 'plot');
+      }
+      return true;
+    }
+
+    this._pinchState = null;
+    this._pan = null;
+    this._gestureTarget = null;
+    this._panAxis = null;
+    return true;
+  }
+
+  handlePointerCancel() {
+    this._pinchState = null;
+    this._pan = null;
+    this._gestureTarget = null;
+    this._panAxis = null;
   }
 
   _scalePrice(touch, canvas, dy, event) {
