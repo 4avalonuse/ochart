@@ -125,13 +125,49 @@ export class ChartZoom {
   }
 
   getState() {
-    const scale = this.chart?.scales?.x;
-    return scale ? { min: scale.min, max: scale.max } : null;
+    const xScale = this.chart?.scales?.x;
+    const yOptions = this.chart?.options?.scales?.y;
+    if (!xScale) return null;
+
+    const state = {
+      x: { min: xScale.min, max: xScale.max }
+    };
+
+    const yMin = Number(yOptions?.min);
+    const yMax = Number(yOptions?.max);
+    if (Number.isFinite(yMin) && Number.isFinite(yMax) && yMax > yMin) {
+      state.y = { min: yMin, max: yMax };
+    }
+
+    return state;
   }
 
   setState(state) {
-    if (!this.chart || !state || !this.chart.zoomScale) return;
-    this.chart.zoomScale('x', { min: state.min, max: state.max });
+    if (!this.chart || !state) return;
+
+    if (this.chart.zoomScale) {
+      const x = state.x || state;
+      if (Number.isFinite(Number(x?.min)) && Number.isFinite(Number(x?.max)) && Number(x.max) > Number(x.min)) {
+        this.chart.zoomScale('x', { min: Number(x.min), max: Number(x.max) }, 'none');
+      }
+    }
+
+    const y = state.y;
+    const yOptions = this.chart.options?.scales?.y;
+    if (
+      yOptions &&
+      Number.isFinite(Number(y?.min)) &&
+      Number.isFinite(Number(y?.max)) &&
+      Number(y.max) > Number(y.min)
+    ) {
+      const clamped = this._yViewport.clamp(
+        { min: Number(y.min), max: Number(y.max) },
+        this._yBounds
+      );
+      yOptions.min = clamped.min;
+      yOptions.max = clamped.max;
+      this.chart.update('none');
+    }
   }
 
   hardenWithoutHammer() {
