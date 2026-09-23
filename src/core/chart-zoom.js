@@ -1,13 +1,6 @@
 /**
- * ChartZoom — controle isolado do viewport do gráfico.
- *
- * Gestos:
- * - 1 dedo horizontal = navegação temporal
- * - 1 dedo vertical = navegação de preço
- * - 2 dedos = zoom temporal
- *
- * O ChartZoom não descobre limites de dados sozinho. O ChartEngine
- * fornece os bounds reais do dataset sempre que os dados mudam.
+ * ChartZoom — controle isolado do viewport horizontal do gráfico.
+ * Zoom por gesto de dois dedos é tratado aqui para não depender de Hammer.js.
  */
 export class ChartZoom {
   constructor(chart = null) {
@@ -22,52 +15,40 @@ export class ChartZoom {
   attach(chart) {
     this._detachTouch();
     this.chart = chart;
-    this._bounds = null;
-    this._yBounds = null;
-    this._captureScaleBounds();
+    this._captureBounds();
     this._bindTouch();
     return this;
   }
 
   /**
-   * Atualiza os limites reais do dataset.
-   * Preferível passar os quatro valores explicitamente.
+   * Chame isto sempre que os dados subjacentes mudarem (novos candles,
+   * troca de timeframe, etc.) para que os limites de pan/zoom acompanhem
+   * o intervalo real dos dados em vez de ficarem presos ao valor
+   * capturado em attach().
+   *
+   * Sem argumentos: relê os limites a partir da escala atual (só é
+   * confiável se o gráfico estiver totalmente "zoomed out" no momento
+   * da chamada). Com argumentos: define os limites explicitamente a
+   * partir do intervalo real dos dados — preferível.
    */
-  refreshBounds(xMin, xMax, yMin, yMax) {
-    const hasX = Number.isFinite(Number(xMin)) && Number.isFinite(Number(xMax));
-    const hasY = Number.isFinite(Number(yMin)) && Number.isFinite(Number(yMax));
-
-    if (hasX && Number(xMax) > Number(xMin)) {
-      this._bounds = {
-        min: Number(xMin),
-        max: Number(xMax)
-      };
+  refreshBounds(xMin, xMax) {
+    if (xMin !== undefined && xMax !== undefined) {
+      this._bounds = { min: Number(xMin), max: Number(xMax) };
+      return;
     }
-
-    if (hasY && Number(yMax) > Number(yMin)) {
-      this._yBounds = {
-        min: Number(yMin),
-        max: Number(yMax)
-      };
-    }
-
-    if (!hasX || !hasY) this._captureScaleBounds();
+    this._captureBounds();
   }
 
   reset() {
     if (!this.chart?.resetZoom) return false;
-
     this.chart.resetZoom();
-
     const y = this.chart.options?.scales?.y;
     if (y) {
       delete y.min;
       delete y.max;
     }
-
     this.chart.update('none');
-
-    // Os bounds do dataset continuam sendo os limites de navegação.
+    this._captureBounds();
     return true;
   }
 
@@ -89,21 +70,23 @@ export class ChartZoom {
     }
   }
 
-  _captureScaleBounds() {
+  _captureBounds() {
     const xScale = this.chart?.scales?.x;
-    if (xScale && !this._bounds) {
+    if (xScale) {
       const min = Number(xScale.min);
       const max = Number(xScale.max);
-      if (Number.isFinite(min) && Number.isFinite(max) && max > min) {
-        this._bounds = { min, max };
-      }
+      // Amplia em vez de substituir, para nunca perder um intervalo já
+      // conhecido caso a captura ocorra enquanto o gráfico está com zoom.
+      this._bounds = this._bounds
+        ? { min: Math.min(this._bounds.min, min), max: Math.max(this._bounds.max, max) }
+        : { min, max };
     }
 
     const yScale = this.chart?.scales?.y;
-    if (yScale && !this._yBounds) {
+    if (yScale) {
       const min = Number(yScale.min);
       const max = Number(yScale.max);
-      if (Number.isFinite(min) && Number.isFinite(max) && max > min) {
+      if (Number.isFinite(min) && Number.isFinite(max)) {
         this._yBounds = { min, max };
       }
     }
@@ -115,6 +98,10 @@ export class ChartZoom {
 
     this._touch = {
       start: event => {
+        // Amplia os limites com o que a escala souber agora — cobre o
+        // caso de dados novos terem chegado desde o último attach().
+        this._captureBounds();
+
         if (event.touches?.length === 1) {
           this._beginPan(event.touches[0], canvas);
           return;
@@ -130,8 +117,10 @@ export class ChartZoom {
 
         const a = event.touches[0];
         const b = event.touches[1];
+
         const dx = b.clientX - a.clientX;
         const dy = b.clientY - a.clientY;
+
         const distance = Math.hypot(dx, dy);
 
         if (!Number.isFinite(distance) || distance <= 0) return;
@@ -147,7 +136,9 @@ export class ChartZoom {
 
       move: event => {
         if (event.touches?.length === 1) {
-          // Transição de 2 dedos -> 1 dedo.
+          // Transição de 2 dedos -> 1 dedo em pleno gesto: inicia um
+          // novo pan imediatamente em vez de esperar touchend/touchstart,
+          // para o gesto não "cair" no meio do movimento.
           if (!this._pan) {
             this._pinchState = null;
             this._beginPan(event.touches[0], canvas);
@@ -155,11 +146,13 @@ export class ChartZoom {
           }
 
           const t = event.touches[0];
+
           const dx = t.clientX - this._pan.startX;
           const dy = t.clientY - this._pan.startY;
 
           if (!this._panAxis && Math.hypot(dx, dy) > 6) {
-            this._panAxis = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x';
+            this._panAxis =
+              Math.abs(dy) > Math.abs(dx) ? 'y' : 'x';
           }
 
           /*
@@ -167,22 +160,28 @@ export class ChartZoom {
            */
           if (this._panAxis === 'y') {
             const span = this._pan.yMax - this._pan.yMin;
+
             if (!Number.isFinite(span) || span <= 0) return;
 
-            const delta = -(dy / Math.max(1, this._pan.height)) * span;
+            const delta =
+              -(dy / Math.max(1, this._pan.height)) * span;
 
             let min = this._pan.yMin + delta;
             let max = this._pan.yMax + delta;
 
             const yScale = this.chart?.scales?.y;
-            const yOptions = this.chart?.options?.scales?.y;
-            if (!yScale || !yOptions) return;
+            if (!yScale) return;
 
-            // O usuário pode navegar livremente dentro de uma janela
-            // controlada ao redor do range real dos dados.
+            const yOptions = this.chart?.options?.scales?.y;
+            if (!yOptions) return;
+
+            // Limita o pan vertical a uma janela generosa em torno do
+            // range inicial (capturado em attach/_captureBounds), para
+            // não deixar o usuário arrastar o preço para valores
+            // arbitrariamente distantes ou negativos sem limite.
             if (this._yBounds) {
-              const dataSpan = this._yBounds.max - this._yBounds.min;
-              const slack = Math.max(dataSpan, span) * 2;
+              const boundSpan = this._yBounds.max - this._yBounds.min;
+              const slack = Math.max(boundSpan, span) * 2;
               const floor = this._yBounds.min - slack;
               const ceil = this._yBounds.max + slack;
 
@@ -190,7 +189,6 @@ export class ChartZoom {
                 max += floor - min;
                 min = floor;
               }
-
               if (max > ceil) {
                 min -= max - ceil;
                 max = ceil;
@@ -204,7 +202,9 @@ export class ChartZoom {
             yOptions.max = max;
 
             event.preventDefault();
+
             this.chart.update('none');
+
             return;
           }
 
@@ -212,20 +212,24 @@ export class ChartZoom {
            * EIXO HORIZONTAL — TEMPO
            */
           const span = this._pan.max - this._pan.min;
+
           if (!Number.isFinite(span) || span <= 0) return;
 
-          const delta = -(dx / Math.max(1, this._pan.width)) * span;
+          const delta =
+            -(dx / Math.max(1, this._pan.width)) * span;
 
           let min = this._pan.min + delta;
           let max = this._pan.max + delta;
 
-          const boundMin = Number.isFinite(this._bounds?.min)
-            ? this._bounds.min
-            : min;
+          const boundMin =
+            Number.isFinite(this._bounds?.min)
+              ? this._bounds.min
+              : min;
 
-          const boundMax = Number.isFinite(this._bounds?.max)
-            ? this._bounds.max
-            : max;
+          const boundMax =
+            Number.isFinite(this._bounds?.max)
+              ? this._bounds.max
+              : max;
 
           if (min < boundMin) {
             max += boundMin - min;
@@ -241,7 +245,13 @@ export class ChartZoom {
           max = Math.min(boundMax, max);
 
           event.preventDefault();
-          this.chart.zoomScale('x', { min, max }, 'none');
+
+          this.chart.zoomScale(
+            'x',
+            { min, max },
+            'none'
+          );
+
           return;
         }
 
@@ -249,31 +259,45 @@ export class ChartZoom {
          * ZOOM — DOIS DEDOS
          */
         const state = this._pinchState;
+
         if (!state || event.touches?.length !== 2) return;
 
         const a = event.touches[0];
         const b = event.touches[1];
+
         const dx = b.clientX - a.clientX;
         const dy = b.clientY - a.clientY;
+
         const distance = Math.hypot(dx, dy);
 
         if (!Number.isFinite(distance) || distance <= 0) return;
 
         const span = state.max - state.min;
+
         if (!Number.isFinite(span) || span <= 0) return;
 
         const factor = state.distance / distance;
+
         const xScale = this.chart?.scales?.x;
+
         if (!xScale) return;
 
-        const centerPixel = state.centerX - state.rect.left;
-        const ratio = Math.max(
-          0,
-          Math.min(1, centerPixel / Math.max(1, state.rect.width))
-        );
+        const centerPixel =
+          state.centerX - state.rect.left;
+
+        const ratio =
+          Math.max(
+            0,
+            Math.min(
+              1,
+              centerPixel /
+                Math.max(1, state.rect.width)
+            )
+          );
 
         const centerValue =
-          state.min + (state.max - state.min) * ratio;
+          state.min +
+          (state.max - state.min) * ratio;
 
         let min =
           centerValue -
@@ -283,21 +307,25 @@ export class ChartZoom {
           centerValue +
           (state.max - centerValue) * factor;
 
-        const boundMin = Number.isFinite(this._bounds?.min)
-          ? this._bounds.min
-          : state.min;
+        const boundMin =
+          Number.isFinite(this._bounds?.min)
+            ? this._bounds.min
+            : state.min;
 
-        const boundMax = Number.isFinite(this._bounds?.max)
-          ? this._bounds.max
-          : state.max;
+        const boundMax =
+          Number.isFinite(this._bounds?.max)
+            ? this._bounds.max
+            : state.max;
 
-        const minSpan = Math.max(
-          (boundMax - boundMin) / 10000,
-          1
-        );
+        const minSpan =
+          Math.max(
+            (boundMax - boundMin) / 10000,
+            1
+          );
 
         if (max - min < minSpan) {
           const mid = (min + max) / 2;
+
           min = mid - minSpan / 2;
           max = mid + minSpan / 2;
         }
@@ -316,13 +344,20 @@ export class ChartZoom {
         max = Math.min(boundMax, max);
 
         event.preventDefault();
-        this.chart.zoomScale('x', { min, max }, 'none');
+
+        this.chart.zoomScale(
+          'x',
+          { min, max },
+          'none'
+        );
       },
 
       end: event => {
         this._pinchState = null;
         this._panAxis = null;
 
+        // Se ainda sobra um dedo na tela (saiu de 2 para 1), retoma o
+        // pan a partir da posição atual desse dedo em vez de zerar tudo.
         if (event?.touches?.length === 1) {
           this._beginPan(event.touches[0], canvas);
         } else {
@@ -331,39 +366,71 @@ export class ChartZoom {
       }
     };
 
-    canvas.addEventListener('touchstart', this._touch.start, { passive: true });
-    canvas.addEventListener('touchmove', this._touch.move, { passive: false });
-    canvas.addEventListener('touchend', this._touch.end, { passive: true });
-    canvas.addEventListener('touchcancel', this._touch.end, { passive: true });
+    canvas.addEventListener(
+      'touchstart',
+      this._touch.start,
+      { passive: true }
+    );
+
+    canvas.addEventListener(
+      'touchmove',
+      this._touch.move,
+      { passive: false }
+    );
+
+    canvas.addEventListener(
+      'touchend',
+      this._touch.end,
+      { passive: true }
+    );
+
+    canvas.addEventListener(
+      'touchcancel',
+      this._touch.end,
+      { passive: true }
+    );
   }
 
   _beginPan(touch, canvas) {
     const scale = this.chart?.scales?.x;
-    const yScale = this.chart?.scales?.y;
-    if (!scale || !yScale) return;
-
-    const rect = canvas.getBoundingClientRect();
+    if (!scale) return;
 
     this._pan = {
       startX: touch.clientX,
       startY: touch.clientY,
       min: Number(scale.min),
       max: Number(scale.max),
-      yMin: Number(yScale.min),
-      yMax: Number(yScale.max),
-      height: rect.height,
-      width: rect.width
+      yMin: Number(this.chart?.scales?.y?.min),
+      yMax: Number(this.chart?.scales?.y?.max),
+      height: canvas.getBoundingClientRect().height,
+      width: canvas.getBoundingClientRect().width
     };
   }
 
   _detachTouch() {
     const canvas = this.chart?.canvas;
+
     if (!canvas || !this._touch) return;
 
-    canvas.removeEventListener('touchstart', this._touch.start);
-    canvas.removeEventListener('touchmove', this._touch.move);
-    canvas.removeEventListener('touchend', this._touch.end);
-    canvas.removeEventListener('touchcancel', this._touch.end);
+    canvas.removeEventListener(
+      'touchstart',
+      this._touch.start
+    );
+
+    canvas.removeEventListener(
+      'touchmove',
+      this._touch.move
+    );
+
+    canvas.removeEventListener(
+      'touchend',
+      this._touch.end
+    );
+
+    canvas.removeEventListener(
+      'touchcancel',
+      this._touch.end
+    );
 
     this._touch = null;
     this._pinchState = null;
