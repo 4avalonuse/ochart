@@ -103,16 +103,24 @@ export async function setupControls(engine, tableModal) {
 
   function setScale(scale) {
     currentScale = scale === 'linear' ? 'linear' : 'logarithmic';
-    document.getElementById('btn-scale-linear').classList.toggle('active', currentScale === 'linear');
-    document.getElementById('btn-scale-log').classList.toggle('active', currentScale === 'logarithmic');
+    const linearBtn = document.getElementById('btn-scale-linear');
+    const logBtn = document.getElementById('btn-scale-log');
+    linearBtn.classList.toggle('active', currentScale === 'linear');
+    logBtn.classList.toggle('active', currentScale === 'logarithmic');
+    linearBtn.setAttribute('aria-pressed', String(currentScale === 'linear'));
+    logBtn.setAttribute('aria-pressed', String(currentScale === 'logarithmic'));
     engine?.setScale(currentScale);
     pushLog({ level: 'info', msg: 'scale_change', ts: Date.now(), data: { scale: currentScale } });
   }
 
   function setType(type) {
     currentType = type === 'candlestick' ? 'candlestick' : 'line';
-    document.getElementById('btn-type-line').classList.toggle('active', currentType === 'line');
-    document.getElementById('btn-type-candle').classList.toggle('active', currentType === 'candlestick');
+    const lineBtn = document.getElementById('btn-type-line');
+    const candleBtn = document.getElementById('btn-type-candle');
+    lineBtn.classList.toggle('active', currentType === 'line');
+    candleBtn.classList.toggle('active', currentType === 'candlestick');
+    lineBtn.setAttribute('aria-pressed', String(currentType === 'line'));
+    candleBtn.setAttribute('aria-pressed', String(currentType === 'candlestick'));
     engine?.setType(currentType);
     pushLog({ level: 'info', msg: 'chart_type_change', ts: Date.now(), data: { type: currentType } });
   }
