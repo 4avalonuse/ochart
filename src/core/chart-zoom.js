@@ -57,8 +57,17 @@ export class ChartZoom {
         if(!Number.isFinite(centerValue)||!Number.isFinite(startMin)||!Number.isFinite(startMax)||startMax<=startMin||!Number.isFinite(startCenter)) return;
         // Distância entre os dedos = zoom. Movimento conjunto = pan.
         const ratio=startDistance/distance;
-        const nextMin=centerValue-(centerValue-startCenter)*ratio;
-        const nextMax=centerValue+(startMax-startCenter)*ratio;
+        const scaleChange=Math.abs(distance/startDistance-1);
+        let nextMin,nextMax;
+        if(scaleChange<0.025){
+          const shift=startCenter-centerValue;
+          nextMin=startMin+shift;
+          nextMax=startMax+shift;
+        } else {
+          const halfLeft=(startCenter-startMin)*ratio, halfRight=(startMax-startCenter)*ratio;
+          nextMin=centerValue-halfLeft;
+          nextMax=centerValue+halfRight;
+        }
         if(Number.isFinite(nextMin)&&Number.isFinite(nextMax)&&nextMax>nextMin) this.chart.zoomScale('x',{min:nextMin,max:nextMax},'none');
         return;
       }
