@@ -85,8 +85,11 @@ export class ChartEngine {
   setScale(scale) {
     if (!this.chart) return;
     let next = scale === 'logarithmic' ? 'logarithmic' : 'linear';
-    if (next === 'logarithmic' && this.currentData.some(d => (d.c ?? d.close ?? 0) <= 0)) {
-      console.warn('Dados contêm valores <= 0, usando escala linear');
+    if (next === 'logarithmic' && this.currentData.some(d => {
+      const values = [d?.o ?? d?.open, d?.h ?? d?.high, d?.l ?? d?.low, d?.c ?? d?.close];
+      return values.some(value => Number.isFinite(Number(value)) && Number(value) <= 0);
+    })) {
+      console.warn('Dados contêm OHLC <= 0, usando escala linear');
       next = 'linear';
     }
     this.currentConfig.scale = next;
