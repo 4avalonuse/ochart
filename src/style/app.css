@@ -1685,3 +1685,78 @@ body:not(.chart-focus) .chart-main{ isolation:isolate; }
     opacity:.25;
   }
 }
+
+
+/* =========================================================
+   DRAWING RAIL — ferramentas mínimas ao lado do gráfico
+   ========================================================= */
+@media(max-width:700px){
+  #drawing-toolbar{
+    position:fixed !important;
+    top:50% !important;
+    right:6px !important;
+    left:auto !important;
+    bottom:auto !important;
+    transform:translateY(-50%) !important;
+    width:48px !important;
+    max-width:48px !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+    padding:5px !important;
+    border-radius:14px !important;
+    z-index:210 !important;
+    box-shadow:0 8px 28px rgba(0,0,0,.32) !important;
+  }
+
+  #drawing-toolbar .toolbar-head,
+  #drawing-toolbar .toolbar-history,
+  #drawing-toolbar .toolbar-more{
+    display:none !important;
+  }
+
+  #drawing-toolbar .toolbar-tools-main{
+    padding:0 !important;
+  }
+
+  #drawing-toolbar .toolbar-title{
+    display:none !important;
+  }
+
+  #drawing-toolbar .toolbar-grid{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:4px !important;
+  }
+
+  #drawing-toolbar .tool-btn{
+    width:38px !important;
+    min-width:38px !important;
+    max-width:38px !important;
+    height:38px !important;
+    min-height:38px !important;
+    max-height:38px !important;
+    padding:0 !important;
+    margin:0 !important;
+    border-radius:9px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+  }
+
+  #drawing-toolbar .tool-btn .tool-ico{
+    font-size:19px !important;
+    line-height:1 !important;
+  }
+
+  #drawing-toolbar .tool-btn .tool-label{
+    display:none !important;
+  }
+
+  body.chart-tools-open .chart-quick-controls,
+  body.chart-tools-open .mobile-chart-controls,
+  body.chart-tools-open .research-nav{
+    pointer-events:auto !important;
+    opacity:1 !important;
+  }
+}
