@@ -39,6 +39,70 @@ export class ChartZoom {
     this._captureBounds();
   }
 
+  /**
+   * Enquadra somente os preços do período atualmente visível,
+   * preservando exatamente o zoom temporal (X).
+   */
+  fitVisiblePriceScale() {
+    if (!this.chart) return false;
+
+    const xScale = this.chart.scales?.x;
+    const yOptions = this.chart.options?.scales?.y;
+    if (!xScale || !yOptions) return false;
+
+    const minX = Number(xScale.min);
+    const maxX = Number(xScale.max);
+    if (!Number.isFinite(minX) || !Number.isFinite(maxX) || minX >= maxX) return false;
+
+    const rows = Array.isArray(this.chart.$ochartData)
+      ? this.chart.$ochartData
+      : [];
+
+    if (!rows.length) return false;
+
+    const lows = [];
+    const highs = [];
+
+    for (const row of rows) {
+      const t = Number(row?.t ?? row?.time ?? row?.timestamp);
+      if (!Number.isFinite(t) || t < minX || t > maxX) continue;
+
+      const low = Number(row?.l ?? row?.low ?? row?.c ?? row?.close);
+      const high = Number(row?.h ?? row?.high ?? row?.c ?? row?.close);
+      if (Number.isFinite(low)) lows.push(low);
+      if (Number.isFinite(high)) highs.push(high);
+    }
+
+    if (!lows.length || !highs.length) return false;
+
+    let min = Math.min(...lows);
+    let max = Math.max(...highs);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return false;
+
+    if (this.chart.options.scales.y.type === 'logarithmic') {
+      const positiveLows = lows.filter(value => value > 0);
+      const positiveHighs = highs.filter(value => value > 0);
+      if (!positiveLows.length || !positiveHighs.length) return false;
+      min = Math.min(...positiveLows);
+      max = Math.max(...positiveHighs);
+      const ratio = Math.max(1.005, Math.pow(Math.max(max / min, 1.005), 0.05));
+      min /= ratio;
+      max *= ratio;
+    } else {
+      const span = Math.max(max - min, Math.abs(max) * 0.001, 1e-9);
+      const padding = span * 0.05;
+      min -= padding;
+      max += padding;
+    }
+
+    if (!(max > min)) return false;
+
+    yOptions.min = min;
+    yOptions.max = max;
+    this.chart.update('none');
+    return true;
+  }
+
   reset() {
     if (!this.chart?.resetZoom) return false;
     this.chart.resetZoom();
