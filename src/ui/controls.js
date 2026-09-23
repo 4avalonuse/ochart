@@ -102,27 +102,39 @@ export async function setupControls(engine, tableModal) {
   }
 
   function setScale(scale) {
-    currentScale = scale === 'linear' ? 'linear' : 'logarithmic';
+    const requestedScale = scale === 'linear' ? 'linear' : 'logarithmic';
+    const appliedScale = engine?.setScale(requestedScale) || requestedScale;
+    currentScale = appliedScale;
     const linearBtn = document.getElementById('btn-scale-linear');
     const logBtn = document.getElementById('btn-scale-log');
     linearBtn.classList.toggle('active', currentScale === 'linear');
     logBtn.classList.toggle('active', currentScale === 'logarithmic');
     linearBtn.setAttribute('aria-pressed', String(currentScale === 'linear'));
     logBtn.setAttribute('aria-pressed', String(currentScale === 'logarithmic'));
-    engine?.setScale(currentScale);
-    pushLog({ level: 'info', msg: 'scale_change', ts: Date.now(), data: { scale: currentScale } });
+    pushLog({
+      level: 'info',
+      msg: 'scale_change',
+      ts: Date.now(),
+      data: { requested: requestedScale, applied: currentScale }
+    });
   }
 
   function setType(type) {
-    currentType = type === 'candlestick' ? 'candlestick' : 'line';
+    const requestedType = type === 'candlestick' ? 'candlestick' : 'line';
+    const appliedType = engine?.setType(requestedType) || requestedType;
+    currentType = appliedType;
     const lineBtn = document.getElementById('btn-type-line');
     const candleBtn = document.getElementById('btn-type-candle');
     lineBtn.classList.toggle('active', currentType === 'line');
     candleBtn.classList.toggle('active', currentType === 'candlestick');
     lineBtn.setAttribute('aria-pressed', String(currentType === 'line'));
     candleBtn.setAttribute('aria-pressed', String(currentType === 'candlestick'));
-    engine?.setType(currentType);
-    pushLog({ level: 'info', msg: 'chart_type_change', ts: Date.now(), data: { type: currentType } });
+    pushLog({
+      level: 'info',
+      msg: 'chart_type_change',
+      ts: Date.now(),
+      data: { requested: requestedType, applied: currentType }
+    });
   }
 
   document.getElementById('btn-scale-linear').addEventListener('click', () => setScale('linear'));
