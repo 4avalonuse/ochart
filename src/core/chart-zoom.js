@@ -49,8 +49,10 @@ export class ChartZoom {
   }
 
   setYScaleType(type) {
+    // A troca de escala muda a geometria, mas não deve capturar o viewport
+    // atual como se ele fosse o limite dos dados. O Engine fornece os
+    // limites brutos logo depois da troca.
     this._yViewport.setType(type);
-    this._captureYBounds();
     return this._yViewport.type;
   }
 
