@@ -1562,3 +1562,11 @@ body:not(.chart-focus) .chart-main{ isolation:isolate; }
   .drawer-head{ padding:10px 12px; }
   .drawer-body{ max-height:calc(78svh - 58px); }
 }
+
+/* Estado inativo explícito: evita que regras antigas do CSS deixem os dois segmentos azuis. */
+.seg button[aria-pressed="false"]{
+  background:var(--surface-alt) !important;
+  color:var(--text) !important;
+  border-color:var(--border) !important;
+  box-shadow:none !important;
+}
