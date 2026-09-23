@@ -1,208 +1,238 @@
 // src/ui/drawing-tools/event-handlers.js
 // ============================================================
-// Módulo responsável por gerenciar eventos de mouse e teclado
+// Interação das ferramentas de desenho.
+// Um único pipeline de Pointer Events controla mouse + touch.
+// ChartZoom continua responsável apenas pelos gestos do gráfico.
 // ============================================================
 
 export class EventHandlers {
   constructor(drawingTools) {
     this.dt = drawingTools;
-    this.mouseHandlers = {
-      down: null,
-      move: null,
-      up: null,
-      dblclick: null
-    };
-    this.touchHandlers = {
-      start: null,
-      move: null,
-      end: null
-    };
-    this.pointerHandlers = {
-      down: null,
-      move: null,
-      up: null,
-      cancel: null
-    };
-    this.lastTouchAt = 0;
+    this.pointerHandlers = { down: null, move: null, up: null, cancel: null };
+    this.mouseHandlers = { dblclick: null };
+    this.keyboardHandler = null;
+    this.activePointerId = null;
   }
 
   attach() {
-    if (!this.dt.engine?.canvas) return;
-    const canvas = this.dt.engine.canvas;
+    const canvas = this.dt.engine?.canvas;
+    if (!canvas) return;
 
-    this.mouseHandlers.down = this.onMouseDown.bind(this);
-    this.mouseHandlers.move = this.onMouseMove.bind(this);
-    this.mouseHandlers.up = this.onMouseUp.bind(this);
-    this.mouseHandlers.dblclick = this.onDoubleClick.bind(this);
-
-    canvas.addEventListener('mousedown', this.mouseHandlers.down);
-    canvas.addEventListener('mousemove', this.mouseHandlers.move);
-    canvas.addEventListener('mouseup', this.mouseHandlers.up);
-    canvas.addEventListener('dblclick', this.mouseHandlers.dblclick);
-    canvas.addEventListener('mouseleave', this.mouseHandlers.up);
-
-    this.touchHandlers.start = this.onTouchStart.bind(this);
-    this.touchHandlers.move = this.onTouchMove.bind(this);
-    this.touchHandlers.end = this.onTouchEnd.bind(this);
-
-    canvas.addEventListener('touchstart', this.touchHandlers.start, { passive: false });
-    canvas.addEventListener('touchmove', this.touchHandlers.move, { passive: false });
-    canvas.addEventListener('touchend', this.touchHandlers.end, { passive: false });
-    canvas.addEventListener('touchcancel', this.touchHandlers.end, { passive: false });
-
-    // Touch moderno: Pointer Events são mais confiáveis no Android que
-    // depender da cadeia touch -> mouse. Usamos pointer apenas para toque;
-    // mouse continua no caminho tradicional acima.
     this.pointerHandlers.down = this.onPointerDown.bind(this);
     this.pointerHandlers.move = this.onPointerMove.bind(this);
     this.pointerHandlers.up = this.onPointerUp.bind(this);
-    this.pointerHandlers.cancel = this.onPointerUp.bind(this);
+    this.pointerHandlers.cancel = this.onPointerCancel.bind(this);
+    this.mouseHandlers.dblclick = this.onDoubleClick.bind(this);
 
     canvas.addEventListener('pointerdown', this.pointerHandlers.down, { passive: false });
     canvas.addEventListener('pointermove', this.pointerHandlers.move, { passive: false });
     canvas.addEventListener('pointerup', this.pointerHandlers.up, { passive: false });
     canvas.addEventListener('pointercancel', this.pointerHandlers.cancel, { passive: false });
+    canvas.addEventListener('dblclick', this.mouseHandlers.dblclick);
 
-    this.attachKeyboardShortcuts();
+    this.keyboardHandler = this.onKeyDown.bind(this);
+    document.addEventListener('keydown', this.keyboardHandler);
   }
 
   detach() {
-    if (!this.dt.engine?.canvas) return;
-    const canvas = this.dt.engine.canvas;
+    const canvas = this.dt.engine?.canvas;
+    if (canvas) {
+      canvas.removeEventListener('pointerdown', this.pointerHandlers.down);
+      canvas.removeEventListener('pointermove', this.pointerHandlers.move);
+      canvas.removeEventListener('pointerup', this.pointerHandlers.up);
+      canvas.removeEventListener('pointercancel', this.pointerHandlers.cancel);
+      canvas.removeEventListener('dblclick', this.mouseHandlers.dblclick);
+    }
 
-    canvas.removeEventListener('mousedown', this.mouseHandlers.down);
-    canvas.removeEventListener('mousemove', this.mouseHandlers.move);
-    canvas.removeEventListener('mouseup', this.mouseHandlers.up);
-    canvas.removeEventListener('dblclick', this.mouseHandlers.dblclick);
-    canvas.removeEventListener('mouseleave', this.mouseHandlers.up);
-    canvas.removeEventListener('touchstart', this.touchHandlers.start);
-    canvas.removeEventListener('touchmove', this.touchHandlers.move);
-    canvas.removeEventListener('touchend', this.touchHandlers.end);
-    canvas.removeEventListener('touchcancel', this.touchHandlers.end);
+    if (this.keyboardHandler) {
+      document.removeEventListener('keydown', this.keyboardHandler);
+      this.keyboardHandler = null;
+    }
+
+    this._clearInteractionCapture();
+    this.activePointerId = null;
   }
 
-  attachKeyboardShortcuts() {
-    document.addEventListener('keydown', (e) => {
-      // Undo/Redo
-      if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        this.dt.undo();
-      }
-      if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'z')) {
-        e.preventDefault();
-        this.dt.redo();
-      }
-      
-      // Save/Load
-      if (e.ctrlKey && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        this.dt.storageManager.saveJSON();
-      }
-      if (e.ctrlKey && e.key.toLowerCase() === 'o') {
-        e.preventDefault();
-        this.dt.storageManager.loadJSON();
-      }
-      
-      // Delete selected
-      if (e.key === 'Delete' && this.dt.selectedDrawing) {
-        this.dt.drawingManager.remove(this.dt.selectedDrawing);
-      }
-      
-      // Escape - cancel operations
-      if (e.key === 'Escape') {
-        this.dt.isDrawing = false;
-        this.dt.isDragging = false;
-        this.dt.selectedDrawing = null;
-        this.dt.measureStart = null;
-        this.dt.hideMeasureTooltip();
-        this.dt.toolbar.refreshDrawList();
-        this.dt.drawingManager.clearPreview();
-      }
-      
-      // Tool shortcuts (Alt + key)
-      if (e.altKey) {
-        const key = e.key.toLowerCase();
-        const shortcuts = {
-          'f': 'fib',
-          't': 'trend',
-          'r': 'rect',
-          'h': 'hline',
-          'v': 'vline',
-          'm': 'measure'
-        };
-        if (shortcuts[key]) {
-          this.dt.selectTool(shortcuts[key]);
-        }
-      }
-    });
+  onKeyDown(e) {
+    if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      this.dt.undo();
+      return;
+    }
+
+    if ((e.ctrlKey && e.key === 'y') ||
+        (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'z')) {
+      e.preventDefault();
+      this.dt.redo();
+      return;
+    }
+
+    if (e.ctrlKey && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      this.dt.storageManager.saveJSON();
+      return;
+    }
+
+    if (e.ctrlKey && e.key.toLowerCase() === 'o') {
+      e.preventDefault();
+      this.dt.storageManager.loadJSON();
+      return;
+    }
+
+    if (e.key === 'Delete' && this.dt.selectedDrawing) {
+      this.dt.drawingManager.remove(this.dt.selectedDrawing);
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      this.cancelCurrentOperation();
+      return;
+    }
+
+    if (e.altKey) {
+      const shortcuts = {
+        f: 'fib',
+        t: 'trend',
+        r: 'rect',
+        h: 'hline',
+        v: 'vline',
+        m: 'measure'
+      };
+      const toolId = shortcuts[e.key.toLowerCase()];
+      if (toolId) this.dt.selectTool(toolId);
+    }
   }
 
-  onMouseDown(ev) {
-    if (Date.now() - this.lastTouchAt < 700) return;
+  onPointerDown(ev) {
+    const tool = this.dt.currentTool;
+    if (!tool) return;
+
+    if (ev.pointerType === 'touch') ev.preventDefault();
+
+    this.activePointerId = ev.pointerId;
+    try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch {}
+
     const p = this.eventToChartPoint(ev);
+    if (!p) return;
 
-    // Cursor mode - selection/drag
-    if (this.dt.currentTool?.id === 'cursor') {
+    // Cursor: se houver objeto sob o dedo/mouse, o desenho captura a interação
+    // e o ChartZoom não deve mover o gráfico ao mesmo tempo.
+    if (tool.id === 'cursor') {
       const hit = this.dt.drawingManager.findDrawingAtPoint(p);
+
       if (hit) {
         this.dt.selectedDrawing = hit;
         this.dt.isDragging = true;
         this.dt.dragStartPoint = p;
         this.dt.dragOriginal = JSON.parse(JSON.stringify(hit));
         this.dt.toolbar.refreshDrawList();
-        return;
+        this._setInteractionCapture(true);
+      } else {
+        this._setInteractionCapture(false);
       }
+
+      return;
     }
 
-    // Measure tool
-    if (this.dt.currentTool?.id === 'measure') {
+    // A partir daqui a interação pertence à ferramenta.
+    this._setInteractionCapture(true);
+    this.beginOperation(ev, p);
+  }
+
+  onPointerMove(ev) {
+    if (this.activePointerId !== null && ev.pointerId !== this.activePointerId) return;
+
+    // Hover continua útil no desktop.
+    if (this.dt.currentTool?.id === 'cursor' && !this.dt.isDragging) {
+      const p = this.eventToChartPoint(ev);
+      if (p) {
+        const hovered = this.dt.drawingManager.findDrawingAtPoint(p);
+        if (this.dt.engine?.canvas && ev.pointerType !== 'touch') {
+          this.dt.engine.canvas.style.cursor = hovered ? 'move' : 'default';
+        }
+      }
+      return;
+    }
+
+    if (!this.dt.isDrawing && !this.dt.isDragging) return;
+
+    if (ev.pointerType === 'touch') ev.preventDefault();
+
+    const p = this.eventToChartPoint(ev);
+    if (!p) return;
+
+    this.updateOperation(ev, p);
+  }
+
+  onPointerUp(ev) {
+    if (this.activePointerId !== null && ev.pointerId !== this.activePointerId) return;
+
+    if (ev.pointerType === 'touch') ev.preventDefault();
+
+    if (this.dt.isDrawing || this.dt.isDragging) {
+      this.finishOperation();
+    }
+
+    try { ev.currentTarget.releasePointerCapture(ev.pointerId); } catch {}
+
+    this.activePointerId = null;
+    this._clearInteractionCapture();
+  }
+
+  onPointerCancel(ev) {
+    if (this.activePointerId !== null && ev.pointerId !== this.activePointerId) return;
+
+    if (ev.pointerType === 'touch') ev.preventDefault();
+
+    this.cancelCurrentOperation();
+    try { ev.currentTarget.releasePointerCapture(ev.pointerId); } catch {}
+
+    this.activePointerId = null;
+    this._clearInteractionCapture();
+  }
+
+  beginOperation(ev, p) {
+    const tool = this.dt.currentTool;
+    if (!tool) return;
+
+    if (tool.id === 'measure') {
       this.dt.measureStart = p;
       this.dt.isDrawing = true;
       this.dt.showMeasureTooltip(ev.clientX, ev.clientY, { reset: true });
       return;
     }
 
-    // Drawing tools
-    if (this.dt.currentTool?.type === 'drawing') {
-      this.dt.isDrawing = true;
-      this.dt.startPoint = p;
+    if (tool.type !== 'drawing') return;
 
-      // Horizontal line - create immediately
-      if (this.dt.currentTool.id === 'hline') {
-        this.dt.drawingManager.add({
-          id: `hline-${Date.now()}`,
-          type: 'hline',
-          y: p.y,
-          color: '#3b82f6',
-          visible: true
-        });
-        this.dt.isDrawing = false;
-      }
-      
-      // Vertical line - create immediately
-      if (this.dt.currentTool.id === 'vline') {
-        this.dt.drawingManager.add({
-          id: `vline-${Date.now()}`,
-          type: 'vline',
-          x: p.x,
-          color: '#3b82f6',
-          visible: true
-        });
-        this.dt.isDrawing = false;
-      }
+    this.dt.isDrawing = true;
+    this.dt.startPoint = p;
+    this.dt.endPoint = null;
+
+    if (tool.id === 'hline') {
+      this.dt.drawingManager.add({
+        id: `hline-${Date.now()}`,
+        type: 'hline',
+        y: p.y,
+        color: '#3b82f6',
+        visible: true
+      });
+      this.dt.isDrawing = false;
+      return;
+    }
+
+    if (tool.id === 'vline') {
+      this.dt.drawingManager.add({
+        id: `vline-${Date.now()}`,
+        type: 'vline',
+        x: p.x,
+        color: '#3b82f6',
+        visible: true
+      });
+      this.dt.isDrawing = false;
     }
   }
 
-  onMouseMove(ev) {
-    const p = this.eventToChartPoint(ev);
-
-    // Hover cursor in selection mode
-    if (this.dt.currentTool?.id === 'cursor' && !this.dt.isDragging && this.dt.engine?.canvas) {
-      const hovered = this.dt.drawingManager.findDrawingAtPoint(p);
-      this.dt.engine.canvas.style.cursor = hovered ? 'move' : 'default';
-    }
-
-    // Dragging selected item
+  updateOperation(ev, p) {
     if (this.dt.isDragging && this.dt.selectedDrawing && this.dt.dragStartPoint) {
       const dx = p.x - this.dt.dragStartPoint.x;
       const dy = p.y - this.dt.dragStartPoint.y;
@@ -224,26 +254,23 @@ export class EventHandlers {
           d.y2 = this.dt.dragOriginal.y2 + dy;
           break;
       }
-      
+
       this.dt.drawingManager.sendToEngine();
       return;
     }
 
-    // Measuring
     if (this.dt.currentTool?.id === 'measure' && this.dt.isDrawing) {
       this.dt.showMeasureTooltip(ev.clientX, ev.clientY, { p2: p });
       return;
     }
 
-    // Drawing preview
     if (this.dt.isDrawing && this.dt.startPoint) {
       this.dt.endPoint = p;
       this.dt.drawingManager.updatePreview();
     }
   }
 
-  onMouseUp() {
-    // Finish dragging
+  finishOperation() {
     if (this.dt.isDragging && this.dt.selectedDrawing) {
       this.dt.pushHistory('move');
       this.dt.isDragging = false;
@@ -251,7 +278,6 @@ export class EventHandlers {
       this.dt.dragOriginal = null;
     }
 
-    // Finish measuring
     if (this.dt.currentTool?.id === 'measure' && this.dt.isDrawing) {
       this.dt.isDrawing = false;
       this.dt.measureStart = null;
@@ -259,49 +285,44 @@ export class EventHandlers {
       return;
     }
 
-    // Finish drawing
     if (this.dt.isDrawing && this.dt.startPoint && this.dt.endPoint) {
-      switch (this.dt.currentTool.id) {
-        case 'trend':
-          this.dt.drawingManager.add({
-            id: `trend-${Date.now()}`,
-            type: 'trend',
-            x1: this.dt.startPoint.x,
-            y1: this.dt.startPoint.y,
-            x2: this.dt.endPoint.x,
-            y2: this.dt.endPoint.y,
-            color: '#3b82f6',
-            visible: true
-          });
-          break;
-          
-        case 'rect':
-          this.dt.drawingManager.add({
-            id: `rect-${Date.now()}`,
-            type: 'rect',
-            x1: Math.min(this.dt.startPoint.x, this.dt.endPoint.x),
-            y1: Math.min(this.dt.startPoint.y, this.dt.endPoint.y),
-            x2: Math.max(this.dt.startPoint.x, this.dt.endPoint.x),
-            y2: Math.max(this.dt.startPoint.y, this.dt.endPoint.y),
-            color: '#3b82f6',
-            fillColor: 'rgba(59,130,246,.12)',
-            visible: true
-          });
-          break;
-          
-        case 'fib':
-          this.dt.drawingManager.add({
-            id: `fib-${Date.now()}`,
-            type: 'fib',
-            x1: this.dt.startPoint.x,
-            y1: this.dt.startPoint.y,
-            x2: this.dt.endPoint.x,
-            y2: this.dt.endPoint.y,
-            levels: this.dt.toolbar.readFibLevelsChecked(),
-            color: '#6b7280',
-            visible: true
-          });
-          break;
+      const tool = this.dt.currentTool?.id;
+
+      if (tool === 'trend') {
+        this.dt.drawingManager.add({
+          id: `trend-${Date.now()}`,
+          type: 'trend',
+          x1: this.dt.startPoint.x,
+          y1: this.dt.startPoint.y,
+          x2: this.dt.endPoint.x,
+          y2: this.dt.endPoint.y,
+          color: '#3b82f6',
+          visible: true
+        });
+      } else if (tool === 'rect') {
+        this.dt.drawingManager.add({
+          id: `rect-${Date.now()}`,
+          type: 'rect',
+          x1: Math.min(this.dt.startPoint.x, this.dt.endPoint.x),
+          y1: Math.min(this.dt.startPoint.y, this.dt.endPoint.y),
+          x2: Math.max(this.dt.startPoint.x, this.dt.endPoint.x),
+          y2: Math.max(this.dt.startPoint.y, this.dt.endPoint.y),
+          color: '#3b82f6',
+          fillColor: 'rgba(59,130,246,.12)',
+          visible: true
+        });
+      } else if (tool === 'fib') {
+        this.dt.drawingManager.add({
+          id: `fib-${Date.now()}`,
+          type: 'fib',
+          x1: this.dt.startPoint.x,
+          y1: this.dt.startPoint.y,
+          x2: this.dt.endPoint.x,
+          y2: this.dt.endPoint.y,
+          levels: this.dt.toolbar.readFibLevelsChecked(),
+          color: '#6b7280',
+          visible: true
+        });
       }
     }
 
@@ -311,95 +332,31 @@ export class EventHandlers {
     this.dt.drawingManager.clearPreview();
   }
 
-
-  _touchPoint(ev) {
-    const touch = ev.touches?.[0] || ev.changedTouches?.[0];
-    if (!touch) return null;
-    return {
-      clientX: touch.clientX,
-      clientY: touch.clientY
-    };
-  }
-
-  onPointerDown(ev) {
-    if (ev.pointerType !== 'touch') return;
-
-    const tool = this.dt.currentTool;
-    if (!tool) return;
-
-    ev.preventDefault();
-    try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch {}
-
-    this.onMouseDown({
-      clientX: ev.clientX,
-      clientY: ev.clientY
-    });
-    this.lastTouchAt = Date.now();
-  }
-
-  onPointerMove(ev) {
-    if (ev.pointerType !== 'touch') return;
-    if (!this.dt.currentTool) return;
-
-    if (!this.dt.isDrawing && !this.dt.isDragging) return;
-
-    ev.preventDefault();
-    this.onMouseMove({
-      clientX: ev.clientX,
-      clientY: ev.clientY
-    });
-    this.lastTouchAt = Date.now();
-  }
-
-  onPointerUp(ev) {
-    if (ev.pointerType !== 'touch') return;
-    if (!this.dt.currentTool) return;
-    if (!this.dt.isDrawing && !this.dt.isDragging) return;
-
-    ev.preventDefault();
-    this.onMouseUp();
-    this.lastTouchAt = Date.now();
-
-    try { ev.currentTarget.releasePointerCapture(ev.pointerId); } catch {}
-  }
-
-  onTouchStart(ev) {
-    if (ev.touches?.length !== 1) return;
-    const tool = this.dt.currentTool;
-    if (!tool || (tool.type !== 'drawing' && tool.id !== 'measure')) return;
-
-    ev.preventDefault();
-    this.onMouseDown(this._touchPoint(ev));
-    this.lastTouchAt = Date.now();
-  }
-
-  onTouchMove(ev) {
-    if (ev.touches?.length !== 1) return;
-    const tool = this.dt.currentTool;
-    if (!tool || (tool.type !== 'drawing' && tool.id !== 'measure')) return;
-    if (!this.dt.isDrawing) return;
-
-    ev.preventDefault();
-    this.onMouseMove(this._touchPoint(ev));
-    this.lastTouchAt = Date.now();
-  }
-
-  onTouchEnd(ev) {
-    const tool = this.dt.currentTool;
-    if (!tool || (tool.type !== 'drawing' && tool.id !== 'measure')) return;
-    if (!this.dt.isDrawing && !this.dt.isDragging) return;
-
-    this.lastTouchAt = Date.now();
-    ev.preventDefault();
-    this.onMouseUp();
+  cancelCurrentOperation() {
+    this.dt.isDrawing = false;
+    this.dt.isDragging = false;
+    this.dt.startPoint = null;
+    this.dt.endPoint = null;
+    this.dt.dragStartPoint = null;
+    this.dt.dragOriginal = null;
+    this.dt.measureStart = null;
+    this.dt.hideMeasureTooltip();
+    this.dt.drawingManager.clearPreview();
+    this._clearInteractionCapture();
   }
 
   onDoubleClick(ev) {
     const p = this.eventToChartPoint(ev);
+    if (!p) return;
+
     const hit = this.dt.drawingManager.findDrawingAtPoint(p);
     if (!hit) return;
 
-    const newColor = prompt('Cor (hex) para o objeto selecionado:', hit.color || '#3b82f6');
+    const newColor = prompt(
+      'Cor (hex) para o objeto selecionado:',
+      hit.color || '#3b82f6'
+    );
+
     if (newColor) {
       hit.color = newColor;
       this.dt.drawingManager.sendToEngine();
@@ -408,18 +365,35 @@ export class EventHandlers {
   }
 
   eventToChartPoint(ev) {
-    const rect = this.dt.engine.canvas.getBoundingClientRect();
+    const canvas = this.dt.engine?.canvas;
+    const chart = this.dt.engine?.chart;
+    if (!canvas || !chart) return null;
+
+    const rect = canvas.getBoundingClientRect();
     const x = ev.clientX - rect.left;
     const y = ev.clientY - rect.top;
-    
-    const xs = this.dt.engine?.chart?.scales?.x;
-    const ys = this.dt.engine?.chart?.scales?.y;
-    
-    if (!xs || !ys) return { x: 0, y: 0 };
-    
-    return {
-      x: xs.getValueForPixel(x),
-      y: ys.getValueForPixel(y)
-    };
+
+    const xs = chart.scales?.x;
+    const ys = chart.scales?.y;
+    if (!xs || !ys) return null;
+
+    const valueX = xs.getValueForPixel(x);
+    const valueY = ys.getValueForPixel(y);
+
+    if (!Number.isFinite(Number(valueX)) || !Number.isFinite(Number(valueY))) {
+      return null;
+    }
+
+    return { x: Number(valueX), y: Number(valueY) };
+  }
+
+  _setInteractionCapture(active) {
+    const canvas = this.dt.engine?.canvas;
+    if (!canvas) return;
+    canvas.dataset.ochartDrawingCapture = active ? 'true' : 'false';
+  }
+
+  _clearInteractionCapture() {
+    this._setInteractionCapture(false);
   }
 }
