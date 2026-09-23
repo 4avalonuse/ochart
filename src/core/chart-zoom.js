@@ -22,6 +22,12 @@ export class ChartZoom {
   reset() {
     if (!this.chart?.resetZoom) return false;
     this.chart.resetZoom();
+    const y = this.chart.options?.scales?.y;
+    if (y) {
+      delete y.min;
+      delete y.max;
+    }
+    this.chart.update('none');
     return true;
   }
 
@@ -96,11 +102,17 @@ export class ChartZoom {
           if (this._panAxis === 'y') {
             const span = this._pan.yMax - this._pan.yMin;
             if (!Number.isFinite(span) || span <= 0) return;
-            const delta = (dy / Math.max(1, this._pan.height)) * span;
+            const delta = -(dy / Math.max(1, this._pan.height)) * span;
             const min = this._pan.yMin + delta;
             const max = this._pan.yMax + delta;
+            const yScale = this.chart?.scales?.y;
+            if (!yScale) return;
+            const yOptions = this.chart?.options?.scales?.y;
+            if (!yOptions) return;
+            yOptions.min = min;
+            yOptions.max = max;
             event.preventDefault();
-            this.chart.zoomScale('y', { min, max }, 'none');
+            this.chart.update('none');
             return;
           }
           const span = this._pan.max - this._pan.min;
