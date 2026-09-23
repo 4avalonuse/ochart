@@ -104,13 +104,13 @@ export class DrawingTools {
     const chart = this.engine.chart;
     const drawingMode = this.currentTool?.type === 'drawing' || this.currentTool?.id === 'measure';
     const z = chart.options?.plugins?.zoom;
-    const hasHammer = !!(window.Hammer && window.Hammer.Manager);
-
     if (z) {
-      if (z.zoom?.drag)  z.zoom.drag.enabled  = !drawingMode;
+      // O InteractionManager é o dono de mouse/touch/pen no canvas.
+      // O plugin fica apenas com a roda do mouse como atalho de zoom.
+      if (z.zoom?.drag)  z.zoom.drag.enabled  = false;
       if (z.zoom?.wheel) z.zoom.wheel.enabled = !drawingMode;
-      if (z.zoom?.pinch) z.zoom.pinch.enabled = hasHammer ? !drawingMode : false;
-      if (z.pan)         z.pan.enabled        = hasHammer ? !drawingMode : false;
+      if (z.zoom?.pinch) z.zoom.pinch.enabled = false;
+      if (z.pan)         z.pan.enabled = false;
     }
 
     chart.update('none');
