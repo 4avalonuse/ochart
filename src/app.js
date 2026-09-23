@@ -141,6 +141,7 @@ function boot() {
     document.querySelector('.chart-shell')?.classList.add('drawing-rail-open');
     const toolbar = document.getElementById('drawing-toolbar');
     if (toolbar) toolbar.style.display = 'block';
+    requestAnimationFrame(() => engine.chart?.resize());
   });
 
   document.addEventListener('ochart:toast', event => {
