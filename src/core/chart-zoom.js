@@ -263,7 +263,7 @@ export class ChartZoom {
 
     this._touch = {
       start: event => {
-        if (canvas.dataset.ochartDrawingMode === 'true') return;
+        if (canvas.dataset.ochartDrawingMode === 'true' || canvas.dataset.ochartDrawingCapture === 'true') return;
         this._captureBounds();
 
         if (event.touches?.length === 1) {
