@@ -158,6 +158,7 @@ export class DrawingToolbar {
     el.querySelector('#dt-close')?.addEventListener('click', () => {
       document.body.classList.remove('chart-tools-open');
       document.querySelector('.chart-shell')?.classList.remove('drawing-rail-open');
+      requestAnimationFrame(() => this.dt.engine?.chart?.resize());
     });
 
     // Botões principais
