@@ -156,55 +156,68 @@ export class ChartZoom {
           }
 
           /*
-           * EIXO VERTICAL — PREÇO
+           * EIXO VERTICAL — ESCALA DE PREÇO
+           *
+           * Aqui o gesto não "arrasta" o preço. O ponto onde o dedo
+           * começou vira a âncora e o movimento abre/fecha a escala de
+           * forma contínua. Isso deixa o gesto mais parecido com ajustar
+           * uma régua de preço do que empurrar o gráfico para cima/baixo.
            */
           if (this._panAxis === 'y') {
             const span = this._pan.yMax - this._pan.yMin;
-
             if (!Number.isFinite(span) || span <= 0) return;
 
-            const delta =
-              -(dy / Math.max(1, this._pan.height)) * span;
-
-            let min = this._pan.yMin + delta;
-            let max = this._pan.yMax + delta;
-
             const yScale = this.chart?.scales?.y;
-            if (!yScale) return;
-
             const yOptions = this.chart?.options?.scales?.y;
-            if (!yOptions) return;
+            if (!yScale || !yOptions) return;
 
-            // Limita o pan vertical a uma janela generosa em torno do
-            // range inicial (capturado em attach/_captureBounds), para
-            // não deixar o usuário arrastar o preço para valores
-            // arbitrariamente distantes ou negativos sem limite.
+            const height = Math.max(1, this._pan.height);
+            const travel = dy / height;
+
+            // O fator é exponencial para a sensação ser suave e consistente:
+            // pequenos movimentos fazem ajustes pequenos e o efeito cresce
+            // proporcionalmente, sem saltos.
+            const sensitivity = 2.2;
+            const factor = Math.exp(travel * sensitivity);
+
+            const anchorPixel = this._pan.anchorY - yScale.top;
+            const ratio = Math.max(0, Math.min(1, anchorPixel / Math.max(1, yScale.height)));
+            const anchorValue = this._pan.yMax - ratio * span;
+
+            let newSpan = span * factor;
+
             if (this._yBounds) {
               const boundSpan = this._yBounds.max - this._yBounds.min;
-              const slack = Math.max(boundSpan, span) * 2;
+              if (Number.isFinite(boundSpan) && boundSpan > 0) {
+                newSpan = Math.max(boundSpan / 10000, Math.min(boundSpan * 8, newSpan));
+              }
+            }
+
+            let min = anchorValue - (1 - ratio) * newSpan;
+            let max = anchorValue + ratio * newSpan;
+
+            if (this._yBounds) {
+              const boundSpan = this._yBounds.max - this._yBounds.min;
+              const slack = Math.max(boundSpan, newSpan) * 2;
               const floor = this._yBounds.min - slack;
               const ceil = this._yBounds.max + slack;
 
               if (min < floor) {
-                max += floor - min;
-                min = floor;
+                const correction = floor - min;
+                min += correction;
+                max += correction;
               }
               if (max > ceil) {
-                min -= max - ceil;
-                max = ceil;
+                const correction = max - ceil;
+                min -= correction;
+                max -= correction;
               }
-
-              min = Math.max(floor, min);
-              max = Math.min(ceil, max);
             }
 
             yOptions.min = min;
             yOptions.max = max;
-
             event.preventDefault();
-
             this.chart.update('none');
-
             return;
           }
 
@@ -398,6 +411,7 @@ export class ChartZoom {
     this._pan = {
       startX: touch.clientX,
       startY: touch.clientY,
+      anchorY: touch.clientY,
       min: Number(scale.min),
       max: Number(scale.max),
       yMin: Number(this.chart?.scales?.y?.min),
