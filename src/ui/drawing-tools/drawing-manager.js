@@ -1,3 +1,5 @@
+import { YViewport } from '../../core/y-viewport.js';
+
 // src/ui/drawing-tools/drawing-manager.js
 // ============================================================
 // Módulo responsável pelo gerenciamento de desenhos e conversões
@@ -146,18 +148,25 @@ export class DrawingManager {
         const yHigh = Math.max(d.y1, d.y2);
         const yLow = Math.min(d.y1, d.y2);
         const range = yHigh - yLow;
-        
         if (!isFinite(range) || range === 0) continue;
 
-        const isDown = d.y2 < d.y1; // Arrasto descendente?
+        const isDown = d.y2 < d.y1;
         const isLog = this.dt.engine?.chart?.options?.scales?.y?.type === 'logarithmic';
+        const viewport = new YViewport(isLog ? 'logarithmic' : 'linear');
+
+        if (isLog && (yLow <= 0 || yHigh <= 0)) continue;
+
+        const lowT = viewport.transform(yLow);
+        const highT = viewport.transform(yHigh);
 
         for (const level of levels) {
-          // Cálculo do y baseado na direção do arrasto
-          let y = isDown ? (yHigh - range * level) : (yLow + range * level);
+          const t = isDown
+            ? highT - (highT - lowT) * level
+            : lowT + (highT - lowT) * level;
 
-          // Em escala log, evita valores não positivos
-          if (isLog && y <= 0) continue;
+          const y = viewport.inverse(t);
+
+          if (!Number.isFinite(y) || (isLog && y <= 0)) continue;
 
           out.push({
             id: `${d.id}-${level}`,
