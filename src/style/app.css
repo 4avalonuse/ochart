@@ -1870,3 +1870,17 @@ body:not(.chart-focus) .chart-main{ isolation:isolate; }
     font-size:17px !important;
   }
 }
+
+
+/* FINAL MOBILE DRAWING RAIL — preferred left side */
+@media (max-width:700px){
+  body.chart-tools-open .chart-shell.drawing-rail-open{
+    padding-left:52px !important;
+    padding-right:0 !important;
+  }
+
+  body.chart-tools-open #drawing-toolbar{
+    left:4px !important;
+    right:auto !important;
+  }
+}
