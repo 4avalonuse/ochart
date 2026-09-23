@@ -1417,3 +1417,21 @@ body:not(.chart-focus) .chart-main{ isolation:isolate; }
   .metrics{ opacity:.9; }
   .metrics>div{ gap:5px; }
 }
+
+
+/* OChart accent — vermelho discreto, com um único ponto vivo. */
+.ochart-mark{
+  position:relative;
+  border:1px solid color-mix(in srgb,#8f3030 42%, transparent);
+}
+.ochart-mark::after{
+  content:"";
+  position:absolute;
+  width:4px;
+  height:4px;
+  right:3px;
+  top:3px;
+  border-radius:50%;
+  background:#ff2020;
+  box-shadow:0 0 5px rgba(255,32,32,.28);
+}
