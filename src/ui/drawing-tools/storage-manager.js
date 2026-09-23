@@ -1,7 +1,12 @@
 // src/ui/drawing-tools/storage-manager.js
 // ============================================================
-// Módulo responsável por salvar/carregar dados (JSON)
+// Persistência de desenhos, estudos e estado visual.
+// Contrato atual de viewport:
+//   viewport: { x:{min,max}, y:{min,max} }
 // ============================================================
+
+const SCHEMA_NAME = 'ochart.drawings';
+const SCHEMA_VERSION = 2;
 
 export class StorageManager {
   constructor(drawingTools) {
@@ -11,8 +16,8 @@ export class StorageManager {
   exportJSON() {
     return {
       schema: {
-        name: 'ochart.drawings',
-        version: 1
+        name: SCHEMA_NAME,
+        version: SCHEMA_VERSION
       },
       meta: {
         exportedAt: new Date().toISOString()
@@ -22,8 +27,12 @@ export class StorageManager {
         scale: this.dt.engine?.currentConfig?.scale || 'logarithmic'
       },
       viewport: this.dt.engine?.getZoomState?.() || null,
-      overlays: this.dt.overlayManager.overlays,
-      drawings: this.dt.drawingManager.drawings
+      overlays: Array.isArray(this.dt.overlayManager?.overlays)
+        ? this.dt.overlayManager.overlays
+        : [],
+      drawings: Array.isArray(this.dt.drawingManager?.drawings)
+        ? this.dt.drawingManager.drawings
+        : []
     };
   }
 
@@ -32,34 +41,88 @@ export class StorageManager {
       throw new Error('JSON inválido');
     }
 
-    // Aceita tanto no root quanto dentro de "data"
-    const payload = obj.drawings || obj.overlays ? obj : (obj.data || obj);
+    // Compatibilidade com bundles antigos que guardavam o payload dentro de data.
+    const payload = obj.data && typeof obj.data === 'object'
+      ? { ...obj.data, ...obj }
+      : obj;
 
-    // Restaura overlays e drawings
-    this.dt.overlayManager.overlays = Array.isArray(payload.overlays) ? payload.overlays.slice() : [];
-    this.dt.drawingManager.drawings = Array.isArray(payload.drawings) ? payload.drawings.slice() : [];
+    const engine = this.dt.engine;
+    if (!engine) throw new Error('ChartEngine indisponível');
 
-    // Aplica no chart
+    const overlays = Array.isArray(payload.overlays) ? payload.overlays.slice() : [];
+    const drawings = Array.isArray(payload.drawings) ? payload.drawings.slice() : [];
+
+    this.dt.overlayManager.overlays = overlays;
+    this.dt.drawingManager.drawings = drawings;
+
+    // Primeiro restaura configuração estrutural. O viewport só é restaurado
+    // depois, porque trocar Linha/Velas recria o Chart.js.
+    if (payload.config?.scale) {
+      engine.setScale(payload.config.scale);
+    }
+
+    if (payload.config?.type) {
+      engine.setType(payload.config.type);
+    }
+
+    // Reaplica objetos depois de qualquer recriação do gráfico.
     this.dt.overlayManager.sendToEngine();
     this.dt.drawingManager.sendToEngine();
 
-    // Viewport/config (opcional)
-    if (payload.config?.scale) {
-      this.dt.engine.setScale(payload.config.scale);
-    }
-    if (payload.config?.type) {
-      this.dt.engine.setType(payload.config.type);
-    }
-    if (payload.viewport?.min != null && payload.viewport?.max != null) {
-      this.dt.engine.setZoomState({
-        min: payload.viewport.min,
-        max: payload.viewport.max
-      });
+    const viewport = this._normalizeViewport(payload.viewport);
+    if (viewport) {
+      engine.setZoomState(viewport);
     }
 
-    // Atualiza UI
     this.dt.toolbar.refreshMAList();
     this.dt.toolbar.refreshDrawList();
+  }
+
+  _normalizeViewport(viewport) {
+    if (!viewport || typeof viewport !== 'object') return null;
+
+    // Contrato atual.
+    if (
+      viewport.x &&
+      Number.isFinite(Number(viewport.x.min)) &&
+      Number.isFinite(Number(viewport.x.max))
+    ) {
+      const out = {
+        x: {
+          min: Number(viewport.x.min),
+          max: Number(viewport.x.max)
+        }
+      };
+
+      if (
+        viewport.y &&
+        Number.isFinite(Number(viewport.y.min)) &&
+        Number.isFinite(Number(viewport.y.max))
+      ) {
+        out.y = {
+          min: Number(viewport.y.min),
+          max: Number(viewport.y.max)
+        };
+      }
+
+      return out;
+    }
+
+    // Compatibilidade com bundles v1:
+    // viewport:{min,max} representava somente X.
+    if (
+      Number.isFinite(Number(viewport.min)) &&
+      Number.isFinite(Number(viewport.max))
+    ) {
+      return {
+        x: {
+          min: Number(viewport.min),
+          max: Number(viewport.max)
+        }
+      };
+    }
+
+    return null;
   }
 
   async saveJSON() {
@@ -69,7 +132,7 @@ export class StorageManager {
     try {
       const data = this.exportJSON();
       const url = './api/bundles.php?action=save&id=' + encodeURIComponent(id);
-      
+
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -77,16 +140,15 @@ export class StorageManager {
       });
 
       const out = await res.json().catch(() => null);
-      
+
       if (!res.ok || !out?.ok) {
         throw new Error(out?.error || ('HTTP ' + res.status));
       }
 
       this.dt.flash(`Salvo em api/bundles/${id}.json`);
-      
     } catch (e) {
       console.error(e);
-      if (confirm('Falha ao salvar no servidor.\nQuer baixar o JSON localmente?')) {
+      if (confirm('Falha ao salvar no servidor.\\nQuer baixar o JSON localmente?')) {
         this.saveJSONDownload();
       } else {
         alert('Erro ao salvar: ' + e.message);
@@ -100,12 +162,11 @@ export class StorageManager {
       const text = JSON.stringify(data, null, 2);
       const blob = new Blob([text], { type: 'application/json' });
 
-      // Gera nome com timestamp
       const pad = n => String(n).padStart(2, '0');
       const d = new Date();
-      const fname = `ochart-drawings-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+      const fname =
+        `ochart-drawings-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.json`;
 
-      // Cria link de download
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = fname;
@@ -113,9 +174,8 @@ export class StorageManager {
       a.click();
       URL.revokeObjectURL(a.href);
       a.remove();
-      
+
       this.dt.flash('Desenhos salvos (JSON baixado).');
-      
     } catch (err) {
       console.error(err);
       alert('Falha no download do JSON: ' + err.message);
@@ -126,11 +186,11 @@ export class StorageManager {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'application/json';
-    
+
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-      
+
       try {
         const text = await file.text();
         const obj = JSON.parse(text);
@@ -141,24 +201,22 @@ export class StorageManager {
         alert('Falha ao carregar JSON: ' + e.message);
       }
     };
-    
+
     input.click();
   }
 
-  // Métodos para integração futura com backend
   async loadFromServer(id) {
     try {
       const url = `./api/bundles.php?action=load&id=${encodeURIComponent(id)}`;
       const res = await fetch(url);
-      
+
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
-      
+
       const data = await res.json();
       this.applyJSON(data);
       this.dt.flash(`Carregado de api/bundles/${id}.json`);
-      
     } catch (e) {
       console.error(e);
       throw new Error(`Erro ao carregar do servidor: ${e.message}`);
@@ -169,13 +227,12 @@ export class StorageManager {
     try {
       const url = './api/bundles.php?action=list';
       const res = await fetch(url);
-      
+
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
-      
+
       return await res.json();
-      
     } catch (e) {
       console.error(e);
       return [];
