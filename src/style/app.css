@@ -1805,3 +1805,68 @@ body:not(.chart-focus) .chart-main{ isolation:isolate; }
     transform:none !important;
   }
 }
+
+
+/* FINAL MOBILE DRAWING RAIL — keep tools outside the plot */
+@media (max-width:700px){
+  body.chart-tools-open .chart-shell.drawing-rail-open{
+    position:relative !important;
+    padding-left:0 !important;
+    padding-right:52px !important;
+    box-sizing:border-box !important;
+  }
+
+  body.chart-tools-open #drawing-toolbar{
+    position:absolute !important;
+    left:auto !important;
+    right:4px !important;
+    top:50% !important;
+    bottom:auto !important;
+    transform:translateY(-50%) !important;
+    width:42px !important;
+    min-width:42px !important;
+    max-width:42px !important;
+    height:auto !important;
+    max-height:none !important;
+    margin:0 !important;
+    padding:4px !important;
+    overflow:visible !important;
+    z-index:25 !important;
+  }
+
+  body.chart-tools-open #drawing-toolbar .toolbar-head,
+  body.chart-tools-open #drawing-toolbar .toolbar-history,
+  body.chart-tools-open #drawing-toolbar .toolbar-more,
+  body.chart-tools-open #drawing-toolbar .toolbar-title{
+    display:none !important;
+  }
+
+  body.chart-tools-open #drawing-toolbar .toolbar-tools-main{
+    padding:0 !important;
+  }
+
+  body.chart-tools-open #drawing-toolbar .toolbar-grid{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:4px !important;
+  }
+
+  body.chart-tools-open #drawing-toolbar .tool-btn{
+    width:34px !important;
+    min-width:34px !important;
+    max-width:34px !important;
+    height:34px !important;
+    min-height:34px !important;
+    max-height:34px !important;
+    padding:0 !important;
+    margin:0 !important;
+  }
+
+  body.chart-tools-open #drawing-toolbar .tool-label{
+    display:none !important;
+  }
+
+  body.chart-tools-open #drawing-toolbar .tool-ico{
+    font-size:17px !important;
+  }
+}
