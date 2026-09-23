@@ -111,8 +111,11 @@ export class DrawingToolbar {
       const btn = document.createElement('button');
       btn.className = 'tool-btn';
       btn.id = `dt-tool-${tool.id}`;
-      btn.innerHTML = `<span class="tool-ico">${tool.icon}</span>`;
+      btn.type = 'button';
+      btn.innerHTML = `<span class="tool-ico" aria-hidden="true">${tool.icon}</span><span class="tool-label">${tool.label}</span>`;
       btn.title = tool.label;
+      btn.setAttribute('aria-label', tool.label);
+      btn.setAttribute('aria-pressed', 'false');
       btn.addEventListener('click', () => this.dt.selectTool(tool.id));
       grid.appendChild(btn);
     });
@@ -175,9 +178,15 @@ export class DrawingToolbar {
   }
 
   setActiveTool(toolId) {
-    this.element.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    this.element.querySelectorAll('.tool-btn').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-pressed', 'false');
+    });
     const btn = this.element.querySelector(`#dt-tool-${toolId}`);
-    if (btn) btn.classList.add('active');
+    if (btn) {
+      btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
+    }
   }
 
   updateHistoryButtons(index, length) {
