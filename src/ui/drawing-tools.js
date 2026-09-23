@@ -75,11 +75,13 @@ export class DrawingTools {
   // Seleção de Ferramenta
   // =========================================================
   selectTool(toolId) {
+    if (this.eventHandlers?.cancelCurrentOperation) this.eventHandlers.cancelCurrentOperation();
     this.toolbar.setActiveTool(toolId);
     this.currentTool = this.tools[toolId];
     if (this.engine?.canvas) {
       const drawingMode = this.currentTool?.type === 'drawing' || this.currentTool?.id === 'measure';
       this.engine.canvas.dataset.ochartDrawingMode = drawingMode ? 'true' : 'false';
+      this.engine.canvas.dataset.ochartDrawingCapture = 'false';
     }
     this._updateCanvasCursor();
     this._updateChartInteraction();
