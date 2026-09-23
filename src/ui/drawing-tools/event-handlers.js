@@ -15,34 +15,20 @@ export class EventHandlers {
   }
 
   attach() {
-    const canvas = this.dt.engine?.canvas;
-    if (!canvas) return;
-
+    // O InteractionManager é o único dono dos listeners físicos do canvas.
+    // Este módulo continua responsável por teclado e pelas operações de desenho.
     this.pointerHandlers.down = this.onPointerDown.bind(this);
     this.pointerHandlers.move = this.onPointerMove.bind(this);
     this.pointerHandlers.up = this.onPointerUp.bind(this);
     this.pointerHandlers.cancel = this.onPointerCancel.bind(this);
     this.mouseHandlers.dblclick = this.onDoubleClick.bind(this);
 
-    canvas.addEventListener('pointerdown', this.pointerHandlers.down, { passive: false });
-    canvas.addEventListener('pointermove', this.pointerHandlers.move, { passive: false });
-    canvas.addEventListener('pointerup', this.pointerHandlers.up, { passive: false });
-    canvas.addEventListener('pointercancel', this.pointerHandlers.cancel, { passive: false });
-    canvas.addEventListener('dblclick', this.mouseHandlers.dblclick);
-
     this.keyboardHandler = this.onKeyDown.bind(this);
     document.addEventListener('keydown', this.keyboardHandler);
   }
 
   detach() {
-    const canvas = this.dt.engine?.canvas;
-    if (canvas) {
-      canvas.removeEventListener('pointerdown', this.pointerHandlers.down);
-      canvas.removeEventListener('pointermove', this.pointerHandlers.move);
-      canvas.removeEventListener('pointerup', this.pointerHandlers.up);
-      canvas.removeEventListener('pointercancel', this.pointerHandlers.cancel);
-      canvas.removeEventListener('dblclick', this.mouseHandlers.dblclick);
-    }
+    // Os listeners do canvas pertencem ao InteractionManager e são removidos lá.
 
     if (this.keyboardHandler) {
       document.removeEventListener('keydown', this.keyboardHandler);
