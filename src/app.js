@@ -138,6 +138,7 @@ function boot() {
   document.getElementById('open-drawings')?.addEventListener('click', () => {
     setDrawer(false);
     document.body.classList.add('chart-tools-open');
+    document.querySelector('.chart-shell')?.classList.add('drawing-rail-open');
     const toolbar = document.getElementById('drawing-toolbar');
     if (toolbar) toolbar.style.display = 'block';
   });
