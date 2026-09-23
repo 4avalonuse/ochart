@@ -78,6 +78,7 @@ function boot() {
   const toolsBtn = document.getElementById('chart-open-tools');
   const drawer = document.getElementById('research-drawer');
   const drawerClose = document.getElementById('drawer-close');
+  const drawerBackdrop = document.getElementById('research-backdrop');
   const chartMain = document.querySelector('.chart-main');
 
   const setFocus = open => {
@@ -87,7 +88,9 @@ function boot() {
 
   const setDrawer = (open, panel = 'market') => {
     drawer?.classList.toggle('open', open);
+    drawerBackdrop?.classList.toggle('open', open);
     drawer?.setAttribute('aria-hidden', String(!open));
+    drawerBackdrop?.setAttribute('aria-hidden', String(!open));
     document.body.classList.toggle('drawer-open', open);
     if (open) selectPanel(panel);
     requestAnimationFrame(() => engine.chart?.resize());
@@ -107,6 +110,7 @@ function boot() {
   focusBtn?.addEventListener('click', () => setFocus(!document.body.classList.contains('chart-focus')));
   toolsBtn?.addEventListener('click', () => setDrawer(true, 'tools'));
   drawerClose?.addEventListener('click', () => setDrawer(false));
+  drawerBackdrop?.addEventListener('click', () => setDrawer(false));
 
   document.querySelectorAll('.research-nav-item').forEach(button => {
     button.addEventListener('click', () => {
