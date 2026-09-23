@@ -174,7 +174,7 @@ export class ChartEngine {
 
     const yMax = yMaxRaw > yMin ? yMaxRaw : yMin + Math.max(Math.abs(yMin) * 0.01, 1);
 
-    this.zoom.refreshBounds(xMin, xMax, yMin, yMax);
+    this.zoom.refreshBounds(xMin, xMax);
   }
 
   _getScaleType() {
