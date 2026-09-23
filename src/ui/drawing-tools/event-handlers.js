@@ -90,8 +90,7 @@ export class EventHandlers {
           'r': 'rect',
           'h': 'hline',
           'v': 'vline',
-          'm': 'measure',
-          'x': 'text'
+          'm': 'measure'
         };
         if (shortcuts[key]) {
           this.dt.selectTool(shortcuts[key]);
