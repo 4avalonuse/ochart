@@ -12,6 +12,12 @@ export class EventHandlers {
       up: null,
       dblclick: null
     };
+    this.touchHandlers = {
+      start: null,
+      move: null,
+      end: null
+    };
+    this.lastTouchAt = 0;
   }
 
   attach() {
@@ -29,6 +35,15 @@ export class EventHandlers {
     canvas.addEventListener('dblclick', this.mouseHandlers.dblclick);
     canvas.addEventListener('mouseleave', this.mouseHandlers.up);
 
+    this.touchHandlers.start = this.onTouchStart.bind(this);
+    this.touchHandlers.move = this.onTouchMove.bind(this);
+    this.touchHandlers.end = this.onTouchEnd.bind(this);
+
+    canvas.addEventListener('touchstart', this.touchHandlers.start, { passive: false });
+    canvas.addEventListener('touchmove', this.touchHandlers.move, { passive: false });
+    canvas.addEventListener('touchend', this.touchHandlers.end, { passive: false });
+    canvas.addEventListener('touchcancel', this.touchHandlers.end, { passive: false });
+
     this.attachKeyboardShortcuts();
   }
 
@@ -41,6 +56,10 @@ export class EventHandlers {
     canvas.removeEventListener('mouseup', this.mouseHandlers.up);
     canvas.removeEventListener('dblclick', this.mouseHandlers.dblclick);
     canvas.removeEventListener('mouseleave', this.mouseHandlers.up);
+    canvas.removeEventListener('touchstart', this.touchHandlers.start);
+    canvas.removeEventListener('touchmove', this.touchHandlers.move);
+    canvas.removeEventListener('touchend', this.touchHandlers.end);
+    canvas.removeEventListener('touchcancel', this.touchHandlers.end);
   }
 
   attachKeyboardShortcuts() {
@@ -100,6 +119,7 @@ export class EventHandlers {
   }
 
   onMouseDown(ev) {
+    if (Date.now() - this.lastTouchAt < 700) return;
     const p = this.eventToChartPoint(ev);
 
     // Cursor mode - selection/drag
@@ -270,6 +290,47 @@ export class EventHandlers {
     this.dt.startPoint = null;
     this.dt.endPoint = null;
     this.dt.drawingManager.clearPreview();
+  }
+
+
+  _touchPoint(ev) {
+    const touch = ev.touches?.[0] || ev.changedTouches?.[0];
+    if (!touch) return null;
+    return {
+      clientX: touch.clientX,
+      clientY: touch.clientY
+    };
+  }
+
+  onTouchStart(ev) {
+    if (ev.touches?.length !== 1) return;
+    const tool = this.dt.currentTool;
+    if (!tool || (tool.type !== 'drawing' && tool.id !== 'measure')) return;
+
+    this.lastTouchAt = Date.now();
+    ev.preventDefault();
+    this.onMouseDown(this._touchPoint(ev));
+  }
+
+  onTouchMove(ev) {
+    if (ev.touches?.length !== 1) return;
+    const tool = this.dt.currentTool;
+    if (!tool || (tool.type !== 'drawing' && tool.id !== 'measure')) return;
+    if (!this.dt.isDrawing) return;
+
+    this.lastTouchAt = Date.now();
+    ev.preventDefault();
+    this.onMouseMove(this._touchPoint(ev));
+  }
+
+  onTouchEnd(ev) {
+    const tool = this.dt.currentTool;
+    if (!tool || (tool.type !== 'drawing' && tool.id !== 'measure')) return;
+    if (!this.dt.isDrawing && !this.dt.isDragging) return;
+
+    this.lastTouchAt = Date.now();
+    ev.preventDefault();
+    this.onMouseUp();
   }
 
   onDoubleClick(ev) {
