@@ -1331,6 +1331,10 @@ button:focus-visible, select:focus-visible{
 }
 .mobile-chart-controls #chart-zoom-fit{
   min-width:48px !important;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none;
+  touch-action:manipulation;
   min-height:44px !important;
   padding:0 12px !important;
   font-size:11px !important;
