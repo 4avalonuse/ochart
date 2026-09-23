@@ -157,6 +157,7 @@ export class DrawingToolbar {
     // Fechar painel de opções
     el.querySelector('#dt-close')?.addEventListener('click', () => {
       document.body.classList.remove('chart-tools-open');
+      document.querySelector('.chart-shell')?.classList.remove('drawing-rail-open');
     });
 
     // Botões principais
