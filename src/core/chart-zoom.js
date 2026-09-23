@@ -11,6 +11,8 @@ export class ChartZoom {
   attach(chart) {
     this._detachTouch();
     this.chart = chart;
+    const scale = chart?.scales?.x;
+    this._bounds = scale ? { min: Number(scale.min), max: Number(scale.max) } : null;
     this._bindTouch();
     return this;
   }
@@ -83,16 +85,14 @@ export class ChartZoom {
         if (!xScale) return;
 
         const centerPixel = state.centerX - state.rect.left;
-        const centerValue = Number(xScale.getValueForPixel(centerPixel));
-        if (!Number.isFinite(centerValue)) return;
+        const ratio = Math.max(0, Math.min(1, centerPixel / Math.max(1, state.rect.width)));
+        const centerValue = state.min + (state.max - state.min) * ratio;
 
         let min = centerValue - (centerValue - state.min) * factor;
         let max = centerValue + (state.max - centerValue) * factor;
 
-        const originalMin = Number(xScale.getUserBounds?.().min ?? xScale.min);
-        const originalMax = Number(xScale.getUserBounds?.().max ?? xScale.max);
-        const boundMin = Number.isFinite(originalMin) ? originalMin : state.min;
-        const boundMax = Number.isFinite(originalMax) ? originalMax : state.max;
+        const boundMin = Number.isFinite(this._bounds?.min) ? this._bounds.min : state.min;
+        const boundMax = Number.isFinite(this._bounds?.max) ? this._bounds.max : state.max;
 
         const minSpan = Math.max((boundMax - boundMin) / 10000, 1);
         if (max - min < minSpan) {
