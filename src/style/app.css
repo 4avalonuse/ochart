@@ -1760,3 +1760,48 @@ body:not(.chart-focus) .chart-main{ isolation:isolate; }
     opacity:1 !important;
   }
 }
+
+
+/* =========================================================
+   DRAWING RAIL 2.0 — reservado fora da área útil do gráfico
+   ========================================================= */
+@media(max-width:700px){
+  .chart-shell.drawing-rail-open{
+    padding-right:52px !important;
+    box-sizing:border-box !important;
+  }
+
+  #drawing-toolbar{
+    position:absolute !important;
+    top:50% !important;
+    right:5px !important;
+    left:auto !important;
+    bottom:auto !important;
+    transform:translateY(-50%) !important;
+    width:42px !important;
+    max-width:42px !important;
+    max-height:none !important;
+    overflow:visible !important;
+    padding:4px !important;
+    border-radius:12px !important;
+    z-index:30 !important;
+    box-shadow:0 5px 18px rgba(0,0,0,.24) !important;
+  }
+
+  #drawing-toolbar .tool-btn{
+    width:34px !important;
+    min-width:34px !important;
+    height:34px !important;
+    min-height:34px !important;
+    max-height:34px !important;
+    border-radius:8px !important;
+  }
+
+  #drawing-toolbar .tool-btn .tool-ico{
+    font-size:17px !important;
+  }
+
+  #drawing-toolbar .tool-btn.active{
+    transform:none !important;
+  }
+}
