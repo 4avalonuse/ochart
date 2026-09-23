@@ -1884,3 +1884,31 @@ body:not(.chart-focus) .chart-main{ isolation:isolate; }
     right:auto !important;
   }
 }
+
+
+/* HOTFIX — toolbar must remain an interactive layer above the canvas */
+@media (max-width:700px){
+  body.chart-tools-open .chart-shell.drawing-rail-open #drawing-toolbar{
+    display:block !important;
+    visibility:visible !important;
+    pointer-events:auto !important;
+    z-index:500 !important;
+  }
+
+  body.chart-tools-open .chart-shell.drawing-rail-open #drawing-toolbar .tool-btn{
+    pointer-events:auto !important;
+    touch-action:manipulation !important;
+    cursor:pointer !important;
+    position:relative !important;
+    z-index:501 !important;
+  }
+
+  body.chart-tools-open .chart-shell.drawing-rail-open #drawing-toolbar .tool-ico{
+    pointer-events:none !important;
+  }
+
+  body.chart-tools-open .chart-shell.drawing-rail-open canvas{
+    position:relative !important;
+    z-index:1 !important;
+  }
+}
