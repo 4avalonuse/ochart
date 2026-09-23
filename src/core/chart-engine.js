@@ -90,8 +90,19 @@ export class ChartEngine {
       next = 'linear';
     }
     this.currentConfig.scale = next;
-    this.chart.options.scales.y.type = next;
-    this.chart.update();
+
+    // Troca de escala é uma troca de geometria, não apenas de aparência.
+    // Remove limites Y antigos para que o Chart.js reconstrua o viewport
+    // no novo espaço antes de receber novos limites de dados.
+    const yOptions = this.chart.options?.scales?.y;
+    if (yOptions) {
+      delete yOptions.min;
+      delete yOptions.max;
+      yOptions.type = next;
+    }
+
+    this.zoom.setYScaleType(next);
+    this.chart.update('none');
     this._refreshZoomBounds();
   }
 
@@ -174,9 +185,15 @@ export class ChartEngine {
       ? Math.min(...positiveLows)
       : yMinRaw;
 
-    const yMax = yMaxRaw > yMin ? yMaxRaw : yMin + Math.max(Math.abs(yMin) * 0.01, 1);
+    let yMax = yMaxRaw;
 
-    this.zoom.refreshBounds(xMin, xMax);
+    if (!(yMax > yMin)) {
+      yMax = this._getScaleType() === 'logarithmic'
+        ? yMin * 1.01
+        : yMin + Math.max(Math.abs(yMin) * 0.01, 1);
+    }
+
+    this.zoom.refreshBounds(xMin, xMax, yMin, yMax);
   }
 
   _getScaleType() {
