@@ -107,6 +107,7 @@ export class ChartEngine {
     this.zoom.setYScaleType(next);
     this.chart.update('none');
     this._refreshZoomBounds();
+    return this._getScaleType();
   }
 
   setType(type) {
@@ -117,9 +118,11 @@ export class ChartEngine {
     try {
       this.create(data, { ...this.currentConfig, type: validType });
       if (zoomState) this.setZoomState(zoomState);
+      return this.currentConfig.type;
     } catch (error) {
       console.error('Erro ao mudar tipo, voltando para linha:', error);
       this.create(data, { ...this.currentConfig, type: 'line' });
+      return 'line';
     }
   }
 
