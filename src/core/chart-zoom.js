@@ -1,6 +1,6 @@
 /**
  * ChartZoom — viewport horizontal + escala vertical no mobile.
- * 1 dedo: navega no tempo; 2 dedos: zoom temporal; toque na escala Y: escala vertical.
+ * 1 dedo: navega no tempo; 2 dedos: pan/zoom temporal; toque na escala Y: escala vertical.
  */
 export class ChartZoom {
   constructor(chart = null) { this.chart = null; this._touches = new Map(); this._touchStart = null; this._bound = false; this._verticalGesture = null; this.priceScaleHitWidth = 72; this.attach(chart); }
@@ -27,7 +27,10 @@ export class ChartZoom {
       if(!event.touches?.length) return; event.preventDefault();
       this._touches=new Map([...event.touches].map(t=>[t.identifier,{x:t.clientX,y:t.clientY}]));
       const x=this.chart?.scales?.x;
-      this._touchStart=x?{min:x.min,max:x.max,distance:this._touchDistance(event.touches)}:null;
+      if(x){
+        const centerX=this._touchCenterX(event.touches), rect=canvas.getBoundingClientRect();
+        this._touchStart={min:x.min,max:x.max,distance:this._touchDistance(event.touches),centerX,centerValue:x.getValueForPixel(centerX-rect.left)};
+      } else this._touchStart=null;
       this._verticalGesture=null;
       if(event.touches.length===1 && this._isPriceScaleZone(event.touches[0],canvas)){
         const y=this.chart?.scales?.y, rect=canvas.getBoundingClientRect();
@@ -45,12 +48,19 @@ export class ChartZoom {
         return;
       }
       if(event.touches.length>=2){
-        this._verticalGesture=null; const distance=this._touchDistance(event.touches), startDistance=this._touchStart.distance;
+        this._verticalGesture=null;
+        const distance=this._touchDistance(event.touches), startDistance=this._touchStart.distance;
         if(!Number.isFinite(distance)||distance<=0||!Number.isFinite(startDistance)||startDistance<=0) return;
-        const ratio=startDistance/distance, rect=canvas.getBoundingClientRect(), centerValue=x.getValueForPixel(this._touchCenterX(event.touches)-rect.left), startMin=Number(this._touchStart.min), startMax=Number(this._touchStart.max);
-        if(!Number.isFinite(centerValue)) return;
-        const nextMin=centerValue-(centerValue-startMin)*ratio, nextMax=centerValue+(startMax-centerValue)*ratio;
-        if(nextMax>nextMin) this.chart.zoomScale('x',{min:nextMin,max:nextMax},'none'); return;
+        const rect=canvas.getBoundingClientRect(), centerX=this._touchCenterX(event.touches);
+        const centerValue=x.getValueForPixel(centerX-rect.left);
+        const startMin=Number(this._touchStart.min), startMax=Number(this._touchStart.max), startCenter=Number(this._touchStart.centerValue);
+        if(!Number.isFinite(centerValue)||!Number.isFinite(startMin)||!Number.isFinite(startMax)||startMax<=startMin||!Number.isFinite(startCenter)) return;
+        // Distância entre os dedos = zoom. Movimento conjunto = pan.
+        const ratio=startDistance/distance;
+        const nextMin=centerValue-(centerValue-startCenter)*ratio;
+        const nextMax=centerValue+(startMax-startCenter)*ratio;
+        if(Number.isFinite(nextMin)&&Number.isFinite(nextMax)&&nextMax>nextMin) this.chart.zoomScale('x',{min:nextMin,max:nextMax},'none');
+        return;
       }
       const touch=event.touches[0], previous=this._touches.get(touch.identifier); if(!previous) return;
       const dx=touch.clientX-previous.x, rect=canvas.getBoundingClientRect(), px=touch.clientX-rect.left, previousValue=x.getValueForPixel(px), currentValue=x.getValueForPixel(px-dx), delta=Number(currentValue)-Number(previousValue);
