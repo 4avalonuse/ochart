@@ -7,6 +7,7 @@ export class ChartZoom {
     this.chart = chart;
     this._touch = null;
     this._pan = null;
+    this._panAxis = null;
   }
 
   attach(chart) {
@@ -54,8 +55,12 @@ export class ChartZoom {
           const t = event.touches[0];
           this._pan = {
             startX: t.clientX,
+            startY: t.clientY,
             min: Number(scale.min),
             max: Number(scale.max),
+            yMin: Number(this.chart?.scales?.y?.min),
+            yMax: Number(this.chart?.scales?.y?.max),
+            height: canvas.getBoundingClientRect().height,
             width: canvas.getBoundingClientRect().width
           };
           return;
@@ -84,6 +89,20 @@ export class ChartZoom {
         if (event.touches?.length === 1 && this._pan) {
           const t = event.touches[0];
           const dx = t.clientX - this._pan.startX;
+          const dy = t.clientY - this._pan.startY;
+          if (!this._panAxis && Math.hypot(dx, dy) > 6) {
+            this._panAxis = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x';
+          }
+          if (this._panAxis === 'y') {
+            const span = this._pan.yMax - this._pan.yMin;
+            if (!Number.isFinite(span) || span <= 0) return;
+            const delta = (dy / Math.max(1, this._pan.height)) * span;
+            const min = this._pan.yMin + delta;
+            const max = this._pan.yMax + delta;
+            event.preventDefault();
+            this.chart.zoomScale('y', { min, max }, 'none');
+            return;
+          }
           const span = this._pan.max - this._pan.min;
           if (!Number.isFinite(span) || span <= 0) return;
           const delta = -(dx / Math.max(1, this._pan.width)) * span;
@@ -148,6 +167,7 @@ export class ChartZoom {
       end: () => {
         this._pinchState = null;
         this._pan = null;
+        this._panAxis = null;
       }
     };
 
@@ -166,5 +186,6 @@ export class ChartZoom {
     canvas.removeEventListener('touchcancel', this._touch.end);
     this._touch = null;
     this._pinchState = null;
+    this._panAxis = null;
   }
 }
