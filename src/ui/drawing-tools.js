@@ -33,7 +33,6 @@ export class DrawingTools {
       vline:   { id:'vline',   icon:'│',  label:'Linha Vertical',    type:'drawing'    },
       rect:    { id:'rect',    icon:'▭',  label:'Retângulo',         type:'drawing'    },
       fib:     { id:'fib',     icon:'🌀', label:'Fibonacci',         type:'drawing'    },
-      text:    { id:'text',    icon:'T',  label:'Texto',             type:'annotation' },
       measure: { id:'measure', icon:'📏', label:'Medir',             type:'tool'       }
     };
 
