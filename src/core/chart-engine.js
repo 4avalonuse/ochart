@@ -48,6 +48,7 @@ export class ChartEngine {
       this.zoom.attach(this.chart);
       this.zoom.hardenWithoutHammer();
       this.chart.update('none');
+      this._refreshZoomBounds();
       this._applyCustomStyles();
       return this.chart;
     } catch (error) {
@@ -61,12 +62,14 @@ export class ChartEngine {
       console.warn('Nenhum gráfico existe para atualizar');
       return;
     }
+
     this.currentData = this._validateData(data);
     this.chart.data.datasets = createDatasets(this.currentData, this.currentConfig, this._overlays);
     this.chart.options.scales.y.type = this._getScaleType();
     this.chart.options.plugins.annotation = this.chart.options.plugins.annotation || {};
     this.chart.options.plugins.annotation.annotations = drawingsToAnnotations(this._drawings);
     this.chart.update('none');
+    this._refreshZoomBounds();
   }
 
   destroy() {
@@ -87,6 +90,7 @@ export class ChartEngine {
     this.currentConfig.scale = next;
     this.chart.options.scales.y.type = next;
     this.chart.update();
+    this._refreshZoomBounds();
   }
 
   setType(type) {
@@ -135,6 +139,42 @@ export class ChartEngine {
       return [];
     }
     return data;
+  }
+
+  _refreshZoomBounds() {
+    if (!this.zoom || !this.currentData.length) return;
+
+    const timestamps = [];
+    const lows = [];
+    const highs = [];
+
+    for (const row of this.currentData) {
+      const t = Number(row?.t ?? row?.time ?? row?.timestamp);
+      if (Number.isFinite(t)) timestamps.push(t);
+
+      const low = Number(row?.l ?? row?.low ?? row?.c ?? row?.close);
+      const high = Number(row?.h ?? row?.high ?? row?.c ?? row?.close);
+
+      if (Number.isFinite(low)) lows.push(low);
+      if (Number.isFinite(high)) highs.push(high);
+    }
+
+    if (!timestamps.length || !lows.length || !highs.length) return;
+
+    const xMin = Math.min(...timestamps);
+    const xMax = Math.max(...timestamps);
+    const yMinRaw = Math.min(...lows);
+    const yMaxRaw = Math.max(...highs);
+
+    // Escala logarítmica não aceita <= 0.
+    const positiveLows = lows.filter(value => value > 0);
+    const yMin = this._getScaleType() === 'logarithmic' && positiveLows.length
+      ? Math.min(...positiveLows)
+      : yMinRaw;
+
+    const yMax = yMaxRaw > yMin ? yMaxRaw : yMin + Math.max(Math.abs(yMin) * 0.01, 1);
+
+    this.zoom.refreshBounds(xMin, xMax, yMin, yMax);
   }
 
   _getScaleType() {
