@@ -43,65 +43,74 @@ export class DrawingToolbar {
     return `
       <div class="toolbar-head">
         <div>
-          <strong>Opções do gráfico</strong>
-          <span class="muted">desenhos e indicadores</span>
+          <span class="toolbar-kicker">OCHART</span>
+          <strong>Desenhar</strong>
         </div>
-        <button id="dt-close" class="toolbar-close" title="Fechar opções" aria-label="Fechar opções">×</button>
-      </div>
-      <div class="toolbar-section">
-        <div class="toolbar-actions">
-          <button id="dt-undo" title="Desfazer (Ctrl+Z)">↶</button>
-          <button id="dt-redo" title="Refazer (Ctrl+Y ou Ctrl+Shift+Z)">↷</button>
-          <button id="dt-save-json" title="Salvar desenhos como JSON (Ctrl+S)">💾 Salvar</button>
-          <button id="dt-load-json" title="Carregar JSON de desenhos (Ctrl+O)">📁 Carregar</button>
-          <button id="dt-clear-all" title="Limpar todos os objetos">🗑️ Limpar</button>
-        </div>
+        <button id="dt-close" class="toolbar-close" title="Fechar" aria-label="Fechar">×</button>
       </div>
 
-      <div class="toolbar-section">
+      <div class="toolbar-section toolbar-tools-main">
         <div class="toolbar-title">Ferramentas</div>
         <div class="toolbar-grid" id="dt-tools"></div>
       </div>
 
-      <div class="toolbar-section">
-        <div class="toolbar-title">Médias móveis</div>
-        <div class="ma-row ma-col">
-          <label class="ma-field">
-            <span>Tipo</span>
-            <select id="dt-ma-type">
-              <option value="SMA">SMA</option>
-              <option value="EMA">EMA</option>
-            </select>
-          </label>
-          <label class="ma-field">
-            <span>Período</span>
-            <input id="dt-ma-period" type="number" min="1" step="1" value="21"/>
-          </label>
-          <label class="ma-field">
-            <span>Largura</span>
-            <input id="dt-ma-width" type="number" min="1" step="0.5" value="1.5"/>
-          </label>
-          <label class="ma-field">
-            <span>Cor</span>
-            <input id="dt-ma-color" type="color" value="#3b82f6"/>
-          </label>
-          <button id="dt-ma-add" class="ma-add">➕ Adicionar média</button>
+      <div class="toolbar-section toolbar-history">
+        <button id="dt-undo" title="Desfazer">↶ <span>Desfazer</span></button>
+        <button id="dt-redo" title="Refazer">↷ <span>Refazer</span></button>
+      </div>
+
+      <details class="toolbar-more">
+        <summary>Mais opções</summary>
+
+        <div class="toolbar-section">
+          <div class="toolbar-title">Desenhos</div>
+          <div class="toolbar-actions">
+            <button id="dt-save-json" title="Salvar desenhos">💾 Salvar</button>
+            <button id="dt-load-json" title="Carregar desenhos">📁 Carregar</button>
+            <button id="dt-clear-all" title="Limpar todos os objetos">🗑️ Limpar</button>
+          </div>
         </div>
-        <div id="dt-ma-list" class="tiny muted">— nenhuma média</div>
-      </div>
 
-      <div class="toolbar-section">
-        <div class="toolbar-title">Fibonacci</div>
-        <details class="fib-toggle">
-          <summary class="muted">Ajustar níveis</summary>
-          <div id="dt-fib-levels" class="fib-levels"></div>
-        </details>
-      </div>
+        <div class="toolbar-section">
+          <div class="toolbar-title">Médias móveis</div>
+          <div class="ma-row ma-col">
+            <label class="ma-field">
+              <span>Tipo</span>
+              <select id="dt-ma-type">
+                <option value="SMA">SMA</option>
+                <option value="EMA">EMA</option>
+              </select>
+            </label>
+            <label class="ma-field">
+              <span>Período</span>
+              <input id="dt-ma-period" type="number" min="1" step="1" value="21"/>
+            </label>
+            <label class="ma-field">
+              <span>Largura</span>
+              <input id="dt-ma-width" type="number" min="1" step="0.5" value="1.5"/>
+            </label>
+            <label class="ma-field">
+              <span>Cor</span>
+              <input id="dt-ma-color" type="color" value="#3b82f6"/>
+            </label>
+            <button id="dt-ma-add" class="ma-add">＋ Adicionar média</button>
+          </div>
+          <div id="dt-ma-list" class="tiny muted">— nenhuma média</div>
+        </div>
 
-      <div class="toolbar-section">
-        <div class="toolbar-title">Objetos (<span id="dt-count">0</span>)</div>
-        <div id="dt-draw-list" class="draw-list tiny"></div>
-      </div>
+        <div class="toolbar-section">
+          <div class="toolbar-title">Fibonacci</div>
+          <details class="fib-toggle">
+            <summary class="muted">Ajustar níveis</summary>
+            <div id="dt-fib-levels" class="fib-levels"></div>
+          </details>
+        </div>
+
+        <div class="toolbar-section">
+          <div class="toolbar-title">Objetos (<span id="dt-count">0</span>)</div>
+          <div id="dt-draw-list" class="draw-list tiny"></div>
+        </div>
+      </details>
     `;
   }
 
