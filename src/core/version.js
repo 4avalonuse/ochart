@@ -1,6 +1,6 @@
 // Fonte única da identidade/versionamento do OChart.
 export const APP_NAME = 'OChart';
-export const VERSION = '0.7.0';
+export const VERSION = '0.7.1';
 export const VERSION_LABEL = `v${VERSION}`;
 export const APP_TITLE = `${APP_NAME} ${VERSION_LABEL}`;
 
