@@ -26,9 +26,7 @@ function boot() {
   themeManager.init(engine);
   setupControls(engine, new TableModal());
 
-  // Controles compactos para celular.
-  document.getElementById('chart-zoom-out')?.addEventListener('click', () => engine.zoom.zoomBy(1.25));
-  document.getElementById('chart-zoom-in')?.addEventListener('click', () => engine.zoom.zoomBy(0.8));
+  // No celular, o zoom principal é gestual; mantemos apenas o retorno ao enquadramento.
   document.getElementById('chart-zoom-fit')?.addEventListener('click', () => engine.resetZoom());
 
   // Interface de pesquisa: gaveta independente do modo tela cheia.
