@@ -307,9 +307,9 @@ export class EventHandlers {
     const tool = this.dt.currentTool;
     if (!tool || (tool.type !== 'drawing' && tool.id !== 'measure')) return;
 
-    this.lastTouchAt = Date.now();
     ev.preventDefault();
     this.onMouseDown(this._touchPoint(ev));
+    this.lastTouchAt = Date.now();
   }
 
   onTouchMove(ev) {
@@ -318,9 +318,9 @@ export class EventHandlers {
     if (!tool || (tool.type !== 'drawing' && tool.id !== 'measure')) return;
     if (!this.dt.isDrawing) return;
 
-    this.lastTouchAt = Date.now();
     ev.preventDefault();
     this.onMouseMove(this._touchPoint(ev));
+    this.lastTouchAt = Date.now();
   }
 
   onTouchEnd(ev) {
