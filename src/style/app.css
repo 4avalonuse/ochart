@@ -1511,3 +1511,54 @@ body:not(.chart-focus) .chart-main{ isolation:isolate; }
   #drawing-toolbar .tool-btn{min-height:52px;}
   #drawing-toolbar .tool-btn .tool-label{font-size:10px;}
 }
+
+
+/* =========================================================
+   13) MENU POLISH — contexto, foco e fechamento intuitivo
+   ========================================================= */
+.research-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:110;
+  background:rgba(0,0,0,.24);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .18s ease !important;
+  backdrop-filter:blur(1px);
+}
+.research-backdrop.open{
+  opacity:1;
+  pointer-events:auto;
+}
+.research-drawer{ z-index:120; }
+.research-nav{ z-index:80; }
+.research-nav-item{ position:relative; }
+.research-nav-item.active::after{
+  content:"";
+  position:absolute;
+  left:22%;
+  right:22%;
+  bottom:3px;
+  height:2px;
+  border-radius:2px;
+  background:currentColor;
+  opacity:.75;
+}
+.drawer-head{
+  background:color-mix(in srgb,var(--surface-alt) 96%,transparent);
+}
+.drawer-body{ padding-bottom:24px; }
+.drawer-section + .drawer-section{
+  border-top:1px solid var(--border);
+  padding-top:18px;
+}
+.drawer-action,.drawer-primary{ font-weight:650; }
+.drawer-action span{ transition:transform .15s ease !important; }
+.drawer-action:hover span{ transform:translateX(2px); }
+#chart-open-tools{ font-size:17px !important; }
+
+@media(max-width:700px){
+  .research-drawer{ z-index:121; }
+  .drawer-head{ padding:10px 12px; }
+  .drawer-body{ max-height:calc(78svh - 58px); }
+}
