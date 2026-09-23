@@ -8,6 +8,7 @@ export class ChartZoom {
     this._touch = null;
     this._pan = null;
     this._panAxis = null;
+    this._gestureTarget = null;
     this._bounds = null;
     this._yBounds = null;
   }
@@ -167,14 +168,32 @@ export class ChartZoom {
         this._captureBounds();
 
         if (event.touches?.length === 1) {
-          this._beginPan(event.touches[0], canvas);
+          const touch = event.touches[0];
+          const rect = canvas.getBoundingClientRect();
+          const yScale = this.chart?.scales?.y;
+          const left = Number(yScale?.left);
+          const right = Number(yScale?.right);
+          const localX = touch.clientX - rect.left;
+
+          const inPriceScale =
+            Number.isFinite(left) &&
+            Number.isFinite(right) &&
+            localX >= left &&
+            localX <= right;
+
+          this._beginPan(
+            touch,
+            canvas,
+            inPriceScale ? 'price-scale' : 'plot'
+          );
           return;
         }
 
         if (event.touches?.length !== 2) return;
 
         this._pan = null;
-        this._panAxis = null;
+        this._panAxis = 'pinch';
+        this._gestureTarget = 'pinch';
 
         const scale = this.chart?.scales?.x;
         if (!scale) return;
@@ -214,9 +233,14 @@ export class ChartZoom {
           const dx = t.clientX - this._pan.startX;
           const dy = t.clientY - this._pan.startY;
 
-          if (!this._panAxis && Math.hypot(dx, dy) > 6) {
-            this._panAxis =
-              Math.abs(dy) > Math.abs(dx) ? 'y' : 'x';
+          if (this._gestureTarget === 'price-scale') {
+            this._scalePrice(t, canvas, dy, event);
+            return;
+          }
+
+          if (!this._gestureTarget && Math.hypot(dx, dy) > 6) {
+            this._gestureTarget =
+              Math.abs(dx) >= Math.abs(dy) ? 'plot-x' : 'plot-y';
           }
 
           /*
@@ -227,6 +251,16 @@ export class ChartZoom {
            * forma contínua. Isso deixa o gesto mais parecido com ajustar
            * uma régua de preço do que empurrar o gráfico para cima/baixo.
            */
+          if (this._gestureTarget === 'plot-y') {
+            this._panPrice(dy, event);
+            return;
+          }
+
+          if (this._gestureTarget === 'plot-x') {
+            this._panTime(dx, event);
+            return;
+          }
+
           if (this._panAxis === 'y') {
             const span = this._pan.yMax - this._pan.yMin;
             if (!Number.isFinite(span) || span <= 0) return;
@@ -297,7 +331,8 @@ export class ChartZoom {
           }
 
           /*
-           * EIXO HORIZONTAL — TEMPO
+           * EIXO HORIZONTAL — TEMPO (legado; não deve ser alcançado
+           * quando o gesto já foi classificado como plot-x).
            */
           const span = this._pan.max - this._pan.min;
 
@@ -443,6 +478,7 @@ export class ChartZoom {
       end: event => {
         this._pinchState = null;
         this._panAxis = null;
+        this._gestureTarget = null;
 
         // Se ainda sobra um dedo na tela (saiu de 2 para 1), retoma o
         // pan a partir da posição atual desse dedo em vez de zerar tudo.
@@ -479,12 +515,14 @@ export class ChartZoom {
     );
   }
 
-  _beginPan(touch, canvas) {
+  _beginPan(touch, canvas, target = 'plot') {
     const scale = this.chart?.scales?.x;
     if (!scale) return;
 
     const canvasRect = canvas.getBoundingClientRect();
     const yScale = this.chart?.scales?.y;
+
+    this._gestureTarget = target === 'price-scale' ? 'price-scale' : null;
 
     this._pan = {
       startX: touch.clientX,
@@ -497,6 +535,119 @@ export class ChartZoom {
       height: Number(yScale?.height) || canvasRect.height,
       width: canvasRect.width
     };
+  }
+
+  _scalePrice(touch, canvas, dy, event) {
+    const span = this._pan.yMax - this._pan.yMin;
+    if (!Number.isFinite(span) || span <= 0) return;
+
+    const yScale = this.chart?.scales?.y;
+    const yOptions = this.chart?.options?.scales?.y;
+    if (!yScale || !yOptions) return;
+
+    const height = Math.max(1, this._pan.height);
+    const travel = dy / height;
+    const factor = Math.exp(travel * 2.2);
+
+    const canvasRect = canvas.getBoundingClientRect();
+    const canvasLocalY = touch.clientY - canvasRect.top;
+    const anchorPixel = canvasLocalY - yScale.top;
+    const ratio = Math.max(0, Math.min(1, anchorPixel / Math.max(1, yScale.height)));
+    const anchorValue = this._pan.yMax - ratio * span;
+
+    let newSpan = span * factor;
+    if (this._yBounds) {
+      const boundSpan = this._yBounds.max - this._yBounds.min;
+      if (Number.isFinite(boundSpan) && boundSpan > 0) {
+        newSpan = Math.max(boundSpan / 10000, Math.min(boundSpan * 8, newSpan));
+      }
+    }
+
+    let min = anchorValue - (1 - ratio) * newSpan;
+    let max = anchorValue + ratio * newSpan;
+
+    if (this._yBounds) {
+      const boundSpan = this._yBounds.max - this._yBounds.min;
+      const slack = Math.max(boundSpan, newSpan) * 2;
+      const floor = this._yBounds.min - slack;
+      const ceil = this._yBounds.max + slack;
+
+      if (min < floor) {
+        const correction = floor - min;
+        min += correction;
+        max += correction;
+      }
+      if (max > ceil) {
+        const correction = max - ceil;
+        min -= correction;
+        max -= correction;
+      }
+    }
+
+    yOptions.min = min;
+    yOptions.max = max;
+    event.preventDefault();
+    this.chart.update('none');
+  }
+
+  _panTime(dx, event) {
+    const span = this._pan.max - this._pan.min;
+    if (!Number.isFinite(span) || span <= 0) return;
+
+    const delta = -(dx / Math.max(1, this._pan.width)) * span;
+    let min = this._pan.min + delta;
+    let max = this._pan.max + delta;
+
+    const boundMin = Number.isFinite(this._bounds?.min) ? this._bounds.min : min;
+    const boundMax = Number.isFinite(this._bounds?.max) ? this._bounds.max : max;
+
+    if (min < boundMin) {
+      max += boundMin - min;
+      min = boundMin;
+    }
+    if (max > boundMax) {
+      min -= max - boundMax;
+      max = boundMax;
+    }
+
+    min = Math.max(boundMin, min);
+    max = Math.min(boundMax, max);
+
+    event.preventDefault();
+    this.chart.zoomScale('x', { min, max }, 'none');
+  }
+
+  _panPrice(dy, event) {
+    const span = this._pan.yMax - this._pan.yMin;
+    if (!Number.isFinite(span) || span <= 0) return;
+
+    const delta = -(dy / Math.max(1, this._pan.height)) * span;
+    const yOptions = this.chart?.options?.scales?.y;
+    if (!yOptions) return;
+
+    let min = this._pan.yMin + delta;
+    let max = this._pan.yMax + delta;
+
+    if (this._yBounds) {
+      const boundSpan = Math.max(this._yBounds.max - this._yBounds.min, span);
+      const slack = boundSpan * 2;
+      const floor = this._yBounds.min - slack;
+      const ceil = this._yBounds.max + slack;
+
+      if (min < floor) {
+        max += floor - min;
+        min = floor;
+      }
+      if (max > ceil) {
+        min -= max - ceil;
+        max = ceil;
+      }
+    }
+
+    yOptions.min = min;
+    yOptions.max = max;
+    event.preventDefault();
+    this.chart.update('none');
   }
 
   _detachTouch() {
