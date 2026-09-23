@@ -6,6 +6,7 @@ export class ChartZoom {
   constructor(chart = null) {
     this.chart = chart;
     this._touch = null;
+    this._pan = null;
   }
 
   attach(chart) {
@@ -47,7 +48,20 @@ export class ChartZoom {
 
     this._touch = {
       start: event => {
+        if (event.touches?.length === 1) {
+          const scale = this.chart?.scales?.x;
+          if (!scale) return;
+          const t = event.touches[0];
+          this._pan = {
+            startX: t.clientX,
+            min: Number(scale.min),
+            max: Number(scale.max),
+            width: canvas.getBoundingClientRect().width
+          };
+          return;
+        }
         if (event.touches?.length !== 2) return;
+        this._pan = null;
         const scale = this.chart?.scales?.x;
         if (!scale) return;
 
@@ -67,6 +81,23 @@ export class ChartZoom {
         };
       },
       move: event => {
+        if (event.touches?.length === 1 && this._pan) {
+          const t = event.touches[0];
+          const dx = t.clientX - this._pan.startX;
+          const span = this._pan.max - this._pan.min;
+          if (!Number.isFinite(span) || span <= 0) return;
+          const delta = -(dx / Math.max(1, this._pan.width)) * span;
+          let min = this._pan.min + delta;
+          let max = this._pan.max + delta;
+          const boundMin = Number.isFinite(this._bounds?.min) ? this._bounds.min : min;
+          const boundMax = Number.isFinite(this._bounds?.max) ? this._bounds.max : max;
+          if (min < boundMin) { max += boundMin - min; min = boundMin; }
+          if (max > boundMax) { min -= max - boundMax; max = boundMax; }
+          min = Math.max(boundMin, min); max = Math.min(boundMax, max);
+          event.preventDefault();
+          this.chart.zoomScale('x', { min, max }, 'none');
+          return;
+        }
         const state = this._pinchState;
         if (!state || event.touches?.length !== 2) return;
 
@@ -116,6 +147,7 @@ export class ChartZoom {
       },
       end: () => {
         this._pinchState = null;
+        this._pan = null;
       }
     };
 
