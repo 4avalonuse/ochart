@@ -17,6 +17,12 @@ export class EventHandlers {
       move: null,
       end: null
     };
+    this.pointerHandlers = {
+      down: null,
+      move: null,
+      up: null,
+      cancel: null
+    };
     this.lastTouchAt = 0;
   }
 
@@ -43,6 +49,19 @@ export class EventHandlers {
     canvas.addEventListener('touchmove', this.touchHandlers.move, { passive: false });
     canvas.addEventListener('touchend', this.touchHandlers.end, { passive: false });
     canvas.addEventListener('touchcancel', this.touchHandlers.end, { passive: false });
+
+    // Touch moderno: Pointer Events são mais confiáveis no Android que
+    // depender da cadeia touch -> mouse. Usamos pointer apenas para toque;
+    // mouse continua no caminho tradicional acima.
+    this.pointerHandlers.down = this.onPointerDown.bind(this);
+    this.pointerHandlers.move = this.onPointerMove.bind(this);
+    this.pointerHandlers.up = this.onPointerUp.bind(this);
+    this.pointerHandlers.cancel = this.onPointerUp.bind(this);
+
+    canvas.addEventListener('pointerdown', this.pointerHandlers.down, { passive: false });
+    canvas.addEventListener('pointermove', this.pointerHandlers.move, { passive: false });
+    canvas.addEventListener('pointerup', this.pointerHandlers.up, { passive: false });
+    canvas.addEventListener('pointercancel', this.pointerHandlers.cancel, { passive: false });
 
     this.attachKeyboardShortcuts();
   }
@@ -300,6 +319,48 @@ export class EventHandlers {
       clientX: touch.clientX,
       clientY: touch.clientY
     };
+  }
+
+  onPointerDown(ev) {
+    if (ev.pointerType !== 'touch') return;
+
+    const tool = this.dt.currentTool;
+    if (!tool) return;
+
+    ev.preventDefault();
+    try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch {}
+
+    this.onMouseDown({
+      clientX: ev.clientX,
+      clientY: ev.clientY
+    });
+    this.lastTouchAt = Date.now();
+  }
+
+  onPointerMove(ev) {
+    if (ev.pointerType !== 'touch') return;
+    if (!this.dt.currentTool) return;
+
+    if (!this.dt.isDrawing && !this.dt.isDragging) return;
+
+    ev.preventDefault();
+    this.onMouseMove({
+      clientX: ev.clientX,
+      clientY: ev.clientY
+    });
+    this.lastTouchAt = Date.now();
+  }
+
+  onPointerUp(ev) {
+    if (ev.pointerType !== 'touch') return;
+    if (!this.dt.currentTool) return;
+    if (!this.dt.isDrawing && !this.dt.isDragging) return;
+
+    ev.preventDefault();
+    this.onMouseUp();
+    this.lastTouchAt = Date.now();
+
+    try { ev.currentTarget.releasePointerCapture(ev.pointerId); } catch {}
   }
 
   onTouchStart(ev) {
