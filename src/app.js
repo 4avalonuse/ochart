@@ -26,8 +26,52 @@ function boot() {
   themeManager.init(engine);
   setupControls(engine, new TableModal());
 
-  // No celular, o zoom principal é gestual; mantemos apenas o retorno ao enquadramento.
-  document.getElementById('chart-zoom-fit')?.addEventListener('click', () => engine.resetZoom());
+  // FIT duplo: toque curto enquadra só o período visível; pressão longa
+  // volta ao histórico completo. Mantemos um único botão para não poluir o celular.
+  const fitBtn = document.getElementById('chart-zoom-fit');
+  let fitPressTimer = null;
+  let ignoreNextFitClick = false;
+
+  const clearFitTimer = () => {
+    if (fitPressTimer) {
+      clearTimeout(fitPressTimer);
+      fitPressTimer = null;
+    }
+  };
+
+  fitBtn?.addEventListener('pointerdown', event => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    ignoreNextFitClick = false;
+    clearFitTimer();
+    fitPressTimer = setTimeout(() => {
+      fitPressTimer = null;
+      ignoreNextFitClick = true;
+      engine.resetZoom();
+    }, 550);
+  });
+
+  fitBtn?.addEventListener('pointerup', event => {
+    clearFitTimer();
+    if (!ignoreNextFitClick) {
+      ignoreNextFitClick = true;
+      engine.zoom.fitVisiblePriceScale();
+    }
+  });
+
+  fitBtn?.addEventListener('pointercancel', clearFitTimer);
+  fitBtn?.addEventListener('pointerleave', event => {
+    if (event.pointerType === 'mouse') clearFitTimer();
+  });
+  fitBtn?.addEventListener('contextmenu', event => event.preventDefault());
+
+  fitBtn?.addEventListener('click', event => {
+    if (ignoreNextFitClick) {
+      ignoreNextFitClick = false;
+      return;
+    }
+    // Acessibilidade: teclado continua usando o toque curto.
+    engine.zoom.fitVisiblePriceScale();
+  });
 
   // Interface de pesquisa: gaveta independente do modo tela cheia.
   const focusBtn = document.getElementById('chart-open-focus');
