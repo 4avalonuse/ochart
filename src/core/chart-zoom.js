@@ -20,7 +20,7 @@ export class ChartZoom {
     this.chart.zoomScale('x', { min:state.min, max:state.max }, 'none');
     if (Number.isFinite(state.yMin) && Number.isFinite(state.yMax)) this.chart.zoomScale('y', { min:state.yMin, max:state.yMax }, 'none');
   }
-  hardenWithoutHammer() { const zoom=this.chart?.options?.plugins?.zoom; if(zoom){ if(zoom.zoom?.pinch) zoom.zoom.pinch.enabled=false; if(zoom.pan) zoom.pan.enabled=false; } }
+  hardenWithoutHammer() { const zoom=this.chart?.options?.plugins?.zoom; if(zoom){ if(zoom.pan) zoom.pan.enabled=false; } }
   _bindTouch() {
     const canvas=this.chart?.canvas; if(!canvas || this._bound) return;
     this._onTouchStart=event=>{
@@ -48,6 +48,18 @@ export class ChartZoom {
         return;
       }
       const touch=event.touches[0], previous=this._touches.get(touch.identifier); if(!previous) return;
+      const dx=touch.clientX-previous.x, rect=canvas.getBoundingClientRect(), px=touch.clientX-rect.left, previousValue=x.getValueForPixel(px), currentValue=x.getValueForPixel(px-dx), delta=Number(currentValue)-Number(previousValue);
+      if(Number.isFinite(delta)) this.chart.zoomScale('x',{min:Number(x.min)+delta,max:Number(x.max)+delta},'none');
+      this._touches.set(touch.identifier,{x:touch.clientX,y:touch.clientY});
+    };
+    this._onTouchEnd=event=>{ event.preventDefault(); if(!event.touches?.length){this._touches.clear();this._touchStart=null;this._verticalGesture=null;} else {this._touches=new Map([...event.touches].map(t=>[t.identifier,{x:t.clientX,y:t.clientY}])); if(event.touches.length!==1)this._verticalGesture=null;} };
+    canvas.addEventListener('touchstart',this._onTouchStart,{passive:false}); canvas.addEventListener('touchmove',this._onTouchMove,{passive:false}); canvas.addEventListener('touchend',this._onTouchEnd,{passive:false}); canvas.addEventListener('touchcancel',this._onTouchEnd,{passive:false}); canvas.style.touchAction='none'; this._bound=true;
+  }
+  _unbindTouch(){ const canvas=this.chart?.canvas; if(canvas&&this._bound){canvas.removeEventListener('touchstart',this._onTouchStart);canvas.removeEventListener('touchmove',this._onTouchMove);canvas.removeEventListener('touchend',this._onTouchEnd);canvas.removeEventListener('touchcancel',this._onTouchEnd);canvas.style.touchAction='';} this._touches.clear();this._touchStart=null;this._verticalGesture=null;this._bound=false; }
+  _isPriceScaleZone(touch,canvas){ const rect=canvas.getBoundingClientRect(); return touch.clientX>=rect.right-this.priceScaleHitWidth; }
+  _touchDistance(touches){ if(touches.length<2)return 0; const a=touches[0],b=touches[1]; return Math.hypot(b.clientX-a.clientX,b.clientY-a.clientY); }
+  _touchCenterX(touches){ return touches.length<2?(touches[0]?.clientX||0):(touches[0].clientX+touches[1].clientX)/2; }
+}      // Dois dedos ficam para o zoom nativo/plugin do gráfico.\n      if(event.touches.length>=2){ this._verticalGesture=null; return; }\n      const touch=event.touches[0], previous=this._touches.get(touch.identifier); if(!previous) return;
       const dx=touch.clientX-previous.x, rect=canvas.getBoundingClientRect(), px=touch.clientX-rect.left, previousValue=x.getValueForPixel(px), currentValue=x.getValueForPixel(px-dx), delta=Number(currentValue)-Number(previousValue);
       if(Number.isFinite(delta)) this.chart.zoomScale('x',{min:Number(x.min)+delta,max:Number(x.max)+delta},'none');
       this._touches.set(touch.identifier,{x:touch.clientX,y:touch.clientY});
