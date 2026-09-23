@@ -180,8 +180,19 @@ export class ChartZoom {
             const sensitivity = 2.2;
             const factor = Math.exp(travel * sensitivity);
 
-            const anchorPixel = this._pan.anchorY - yScale.top;
-            const ratio = Math.max(0, Math.min(1, anchorPixel / Math.max(1, yScale.height)));
+            // Converte o toque para o mesmo espaço de coordenadas da
+            // área útil do plot. clientY é viewport; yScale.top é
+            // canvas-local. A âncora precisa comparar os dois no mesmo espaço.
+            const canvasRect = canvas.getBoundingClientRect();
+            const canvasLocalY = t.clientY - canvasRect.top;
+            const anchorPixel = canvasLocalY - yScale.top;
+            const ratio = Math.max(
+              0,
+              Math.min(
+                1,
+                anchorPixel / Math.max(1, yScale.height)
+              )
+            );
             const anchorValue = this._pan.yMax - ratio * span;
 
             let newSpan = span * factor;
@@ -408,16 +419,19 @@ export class ChartZoom {
     const scale = this.chart?.scales?.x;
     if (!scale) return;
 
+    const canvasRect = canvas.getBoundingClientRect();
+    const yScale = this.chart?.scales?.y;
+
     this._pan = {
       startX: touch.clientX,
       startY: touch.clientY,
-      anchorY: touch.clientY,
+      anchorY: touch.clientY - canvasRect.top,
       min: Number(scale.min),
       max: Number(scale.max),
-      yMin: Number(this.chart?.scales?.y?.min),
-      yMax: Number(this.chart?.scales?.y?.max),
-      height: canvas.getBoundingClientRect().height,
-      width: canvas.getBoundingClientRect().width
+      yMin: Number(yScale?.min),
+      yMax: Number(yScale?.max),
+      height: Number(yScale?.height) || canvasRect.height,
+      width: canvasRect.width
     };
   }
 
