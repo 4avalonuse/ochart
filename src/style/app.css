@@ -1290,3 +1290,130 @@ body.chart-tools-open .chart-shell{ padding-left:0 !important; }
   .research-nav-item{ font-size:9px; padding:0 3px; }
   .market-symbol{ display:none; }
 }
+
+
+/* =========================================================
+   12) OCHART FINISH — hierarquia, toque e limpeza
+   ========================================================= */
+:root{
+  --ochart-radius:12px;
+  --ochart-control-h:40px;
+  --ochart-touch:44px;
+}
+
+/* Evita animações globais em elementos do gráfico e mantém interação precisa. */
+canvas{ transition:none !important; }
+button, select{ -webkit-tap-highlight-color:transparent; }
+button:focus-visible, select:focus-visible{
+  outline:2px solid var(--button-active);
+  outline-offset:2px;
+}
+
+/* O gráfico ganha prioridade visual. */
+.chart-main.box{
+  border-color:color-mix(in srgb,var(--border) 82%, transparent);
+  box-shadow:0 8px 28px rgba(0,0,0,.08);
+}
+.market-strip{
+  pointer-events:none;
+  user-select:none;
+}
+.market-symbol{ opacity:.8; }
+
+/* Um único comando explícito no gráfico: enquadrar. */
+.mobile-chart-controls{
+  gap:0 !important;
+}
+.mobile-chart-controls #chart-zoom-fit{
+  min-width:48px !important;
+  min-height:44px !important;
+  padding:0 12px !important;
+  font-size:11px !important;
+  letter-spacing:.2px;
+  box-shadow:0 5px 16px rgba(0,0,0,.14);
+}
+
+/* Ferramentas ficam disponíveis, mas não competem com o gráfico. */
+.chart-quick-controls button{
+  min-width:44px !important;
+  min-height:44px !important;
+  box-shadow:0 5px 16px rgba(0,0,0,.10);
+}
+
+/* Navegação inferior com toque confortável e hierarquia clara. */
+.research-nav{
+  box-shadow:0 10px 34px rgba(0,0,0,.18);
+}
+.research-nav-item{
+  min-height:44px;
+  transition:background-color .16s ease,color .16s ease !important;
+}
+
+/* Drawer: sensação de painel nativo, sem ocupar a área do gráfico. */
+.research-drawer{
+  will-change:transform;
+  overscroll-behavior:contain;
+}
+.drawer-head,
+.drawer-action,
+.drawer-primary,
+.drawer-close,
+.field select,
+.seg.full button{
+  min-height:44px;
+}
+.drawer-action,
+.drawer-primary{ touch-action:manipulation; }
+.drawer-note{ line-height:1.5; }
+
+/* No modo normal, o usuário entende primeiro o mercado; controles avançados ficam na gaveta. */
+body:not(.chart-focus) .chart-main{ isolation:isolate; }
+
+/* Mobile: mais área útil e menos ruído. */
+@media (max-width:700px){
+  .ochart-workspace{
+    padding:4px;
+    gap:0;
+  }
+  .chart-main.box{
+    border-radius:10px;
+    box-shadow:0 5px 20px rgba(0,0,0,.08);
+  }
+  .market-strip{
+    left:8px !important;
+    top:8px !important;
+    max-width:calc(100% - 66px);
+  }
+  .market-name{ font-size:12px !important; }
+  .market-value{ font-size:15px !important; }
+  .chart-quick-controls{
+    top:8px !important;
+    right:8px !important;
+  }
+  .chart-quick-controls button{
+    width:44px !important;
+    height:44px !important;
+  }
+  .mobile-chart-controls{
+    left:8px !important;
+    bottom:8px !important;
+  }
+  .research-nav{
+    bottom:4px;
+    left:4px;
+    right:4px;
+  }
+  .research-nav-item{ font-size:10px; }
+  .research-drawer{
+    left:4px;
+    right:4px;
+    bottom:4px;
+    border-radius:14px;
+  }
+}
+
+/* A tela estreita não deve exibir controles administrativos antigos. */
+@media (max-width:520px){
+  .metrics{ opacity:.9; }
+  .metrics>div{ gap:5px; }
+}
