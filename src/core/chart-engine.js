@@ -45,6 +45,7 @@ export class ChartEngine {
       });
 
       this.chart = new Chart(this.canvas.getContext('2d'), chartConfig);
+      this.chart.$ochartData = this.currentData;
       this.zoom.attach(this.chart);
       this.zoom.hardenWithoutHammer();
       this.chart.update('none');
@@ -64,6 +65,7 @@ export class ChartEngine {
     }
 
     this.currentData = this._validateData(data);
+    this.chart.$ochartData = this.currentData;
     this.chart.data.datasets = createDatasets(this.currentData, this.currentConfig, this._overlays);
     this.chart.options.scales.y.type = this._getScaleType();
     this.chart.options.plugins.annotation = this.chart.options.plugins.annotation || {};
