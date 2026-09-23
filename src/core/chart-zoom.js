@@ -263,6 +263,7 @@ export class ChartZoom {
 
     this._touch = {
       start: event => {
+        if (canvas.dataset.ochartDrawingMode === 'true') return;
         this._captureBounds();
 
         if (event.touches?.length === 1) {
@@ -303,6 +304,7 @@ export class ChartZoom {
       },
 
       move: event => {
+        if (canvas.dataset.ochartDrawingMode === 'true') return;
         if (event.touches?.length === 1) {
           if (!this._pan) {
             this._pinchState = null;
@@ -398,6 +400,7 @@ export class ChartZoom {
       },
 
       end: event => {
+        if (canvas.dataset.ochartDrawingMode === 'true') return;
         this._pinchState = null;
         this._panAxis = null;
 
