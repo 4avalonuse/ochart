@@ -47,30 +47,6 @@ export class ChartZoom {
         if(Number.isFinite(nextMin)&&Number.isFinite(nextMax)&&nextMax>nextMin) this.chart.zoomScale('y',{min:nextMin,max:nextMax},'none');
         return;
       }
-      if(event.touches.length>=2){
-        this._verticalGesture=null;
-        const distance=this._touchDistance(event.touches), startDistance=this._touchStart.distance;
-        if(!Number.isFinite(distance)||distance<=0||!Number.isFinite(startDistance)||startDistance<=0) return;
-        const rect=canvas.getBoundingClientRect(), centerX=this._touchCenterX(event.touches);
-        const centerValue=x.getValueForPixel(centerX-rect.left);
-        const startMin=Number(this._touchStart.min), startMax=Number(this._touchStart.max), startCenter=Number(this._touchStart.centerValue);
-        if(!Number.isFinite(centerValue)||!Number.isFinite(startMin)||!Number.isFinite(startMax)||startMax<=startMin||!Number.isFinite(startCenter)) return;
-        // Distância entre os dedos = zoom. Movimento conjunto = pan.
-        const ratio=startDistance/distance;
-        const scaleChange=Math.abs(distance/startDistance-1);
-        let nextMin,nextMax;
-        if(scaleChange<0.025){
-          const shift=startCenter-centerValue;
-          nextMin=startMin+shift;
-          nextMax=startMax+shift;
-        } else {
-          const halfLeft=(startCenter-startMin)*ratio, halfRight=(startMax-startCenter)*ratio;
-          nextMin=centerValue-halfLeft;
-          nextMax=centerValue+halfRight;
-        }
-        if(Number.isFinite(nextMin)&&Number.isFinite(nextMax)&&nextMax>nextMin) this.chart.zoomScale('x',{min:nextMin,max:nextMax},'none');
-        return;
-      }
       const touch=event.touches[0], previous=this._touches.get(touch.identifier); if(!previous) return;
       const dx=touch.clientX-previous.x, rect=canvas.getBoundingClientRect(), px=touch.clientX-rect.left, previousValue=x.getValueForPixel(px), currentValue=x.getValueForPixel(px-dx), delta=Number(currentValue)-Number(previousValue);
       if(Number.isFinite(delta)) this.chart.zoomScale('x',{min:Number(x.min)+delta,max:Number(x.max)+delta},'none');
