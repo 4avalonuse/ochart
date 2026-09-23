@@ -85,7 +85,7 @@ export function buildChartConfig({ type, scale, datasets, annotations = [], call
           },
           zoom: {
             wheel: { enabled: true, speed: 0.1 },
-            pinch: { enabled: true },
+            pinch: { enabled: false },
             drag: {
               enabled: true,
               backgroundColor: 'rgba(59, 130, 246, 0.1)',
