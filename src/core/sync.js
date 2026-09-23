@@ -35,9 +35,9 @@ export async function sync(engine, datasetId, currentScale, currentType, options
 
     const data = Array.isArray(payload?.data) ? payload.data : [];
     const meta = payload?.meta || {};
-    const { data: rows, stats } = sanitizeLine(data, {
-      requirePositive: currentScale === 'logarithmic'
-    });
+    // Sanitização pertence aos dados, não à escala visual.
+    // Valores incompatíveis com log são tratados pelo ChartEngine/viewport.
+    const { data: rows, stats } = sanitizeLine(data);
 
     fullRows = rows;
     setCurrentRows(rows);
