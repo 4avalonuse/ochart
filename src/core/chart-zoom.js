@@ -304,7 +304,7 @@ export class ChartZoom {
       },
 
       move: event => {
-        if (canvas.dataset.ochartDrawingMode === 'true') return;
+        if (canvas.dataset.ochartDrawingMode === 'true' || canvas.dataset.ochartDrawingCapture === 'true') return;
         if (event.touches?.length === 1) {
           if (!this._pan) {
             this._pinchState = null;
@@ -400,7 +400,7 @@ export class ChartZoom {
       },
 
       end: event => {
-        if (canvas.dataset.ochartDrawingMode === 'true') return;
+        if (canvas.dataset.ochartDrawingMode === 'true' || canvas.dataset.ochartDrawingCapture === 'true') return;
         this._pinchState = null;
         this._panAxis = null;
 
@@ -521,5 +521,6 @@ export class ChartZoom {
     this._panAxis = null;
     this._pan = null;
     this._gestureTarget = null;
+    if (canvas) canvas.dataset.ochartDrawingCapture = 'false';
   }
 }
