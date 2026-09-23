@@ -1,6 +1,7 @@
 // Ponto de entrada do OChart.
 // Responsabilidade: montar os módulos e iniciar a aplicação.
 import { ChartEngine } from './core/chart-engine.js';
+import { InteractionManager } from './core/interaction-manager.js';
 import { applyVersionUI } from './core/version.js';
 import { checkDataApi } from './core/api-health.js';
 import { mountHUD } from './ui/dev-hud.js';
@@ -18,6 +19,8 @@ function boot() {
   const engine = new ChartEngine($('#ch'));
   const drawingTools = new DrawingTools(engine);
   drawingTools.init();
+  const interactionManager = new InteractionManager(engine, drawingTools);
+  interactionManager.attach();
 
   const shell = document.querySelector('.chart-shell');
   const toolbar = document.getElementById('drawing-toolbar');
