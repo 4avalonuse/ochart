@@ -171,15 +171,16 @@ export class ChartZoom {
           const touch = event.touches[0];
           const rect = canvas.getBoundingClientRect();
           const yScale = this.chart?.scales?.y;
-          const left = Number(yScale?.left);
-          const right = Number(yScale?.right);
+          const chartArea = this.chart?.chartArea;
           const localX = touch.clientX - rect.left;
+          const yPosition = this.chart?.options?.scales?.y?.position || 'right';
 
+          // O eixo Y fica fora da área útil do plot. Usamos o chartArea
+          // para separar claramente "arrastar gráfico" de "alterar escala".
           const inPriceScale =
-            Number.isFinite(left) &&
-            Number.isFinite(right) &&
-            localX >= left &&
-            localX <= right;
+            yPosition === 'left'
+              ? Number.isFinite(chartArea?.left) && localX <= chartArea.left
+              : Number.isFinite(chartArea?.right) && localX >= chartArea.right;
 
           this._beginPan(
             touch,
@@ -224,7 +225,16 @@ export class ChartZoom {
           // para o gesto não "cair" no meio do movimento.
           if (!this._pan) {
             this._pinchState = null;
-            this._beginPan(event.touches[0], canvas);
+            const touch = event.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const chartArea = this.chart?.chartArea;
+            const yPosition = this.chart?.options?.scales?.y?.position || 'right';
+            const localX = touch.clientX - rect.left;
+            const inPriceScale =
+              yPosition === 'left'
+                ? Number.isFinite(chartArea?.left) && localX <= chartArea.left
+                : Number.isFinite(chartArea?.right) && localX >= chartArea.right;
+            this._beginPan(touch, canvas, inPriceScale ? 'price-scale' : 'plot');
             return;
           }
 
@@ -258,75 +268,6 @@ export class ChartZoom {
 
           if (this._gestureTarget === 'plot-x') {
             this._panTime(dx, event);
-            return;
-          }
-
-          if (this._panAxis === 'y') {
-            const span = this._pan.yMax - this._pan.yMin;
-            if (!Number.isFinite(span) || span <= 0) return;
-
-            const yScale = this.chart?.scales?.y;
-            const yOptions = this.chart?.options?.scales?.y;
-            if (!yScale || !yOptions) return;
-
-            const height = Math.max(1, this._pan.height);
-            const travel = dy / height;
-
-            // O fator é exponencial para a sensação ser suave e consistente:
-            // pequenos movimentos fazem ajustes pequenos e o efeito cresce
-            // proporcionalmente, sem saltos.
-            const sensitivity = 2.2;
-            const factor = Math.exp(travel * sensitivity);
-
-            // Converte o toque para o mesmo espaço de coordenadas da
-            // área útil do plot. clientY é viewport; yScale.top é
-            // canvas-local. A âncora precisa comparar os dois no mesmo espaço.
-            const canvasRect = canvas.getBoundingClientRect();
-            const canvasLocalY = t.clientY - canvasRect.top;
-            const anchorPixel = canvasLocalY - yScale.top;
-            const ratio = Math.max(
-              0,
-              Math.min(
-                1,
-                anchorPixel / Math.max(1, yScale.height)
-              )
-            );
-            const anchorValue = this._pan.yMax - ratio * span;
-
-            let newSpan = span * factor;
-
-            if (this._yBounds) {
-              const boundSpan = this._yBounds.max - this._yBounds.min;
-              if (Number.isFinite(boundSpan) && boundSpan > 0) {
-                newSpan = Math.max(boundSpan / 10000, Math.min(boundSpan * 8, newSpan));
-              }
-            }
-
-            let min = anchorValue - (1 - ratio) * newSpan;
-            let max = anchorValue + ratio * newSpan;
-
-            if (this._yBounds) {
-              const boundSpan = this._yBounds.max - this._yBounds.min;
-              const slack = Math.max(boundSpan, newSpan) * 2;
-              const floor = this._yBounds.min - slack;
-              const ceil = this._yBounds.max + slack;
-
-              if (min < floor) {
-                const correction = floor - min;
-                min += correction;
-                max += correction;
-              }
-              if (max > ceil) {
-                const correction = max - ceil;
-                min -= correction;
-                max -= correction;
-              }
-            }
-
-            yOptions.min = min;
-            yOptions.max = max;
-            event.preventDefault();
-            this.chart.update('none');
             return;
           }
 
