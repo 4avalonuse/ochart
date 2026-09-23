@@ -55,7 +55,7 @@ export class ChartZoom {
 
     this._onTouchStart = event => {
       if (!event.touches?.length) return;
-      event.preventDefault();
+      if (event.touches.length === 1) event.preventDefault();
       this._touches = new Map([...event.touches].map(t => [t.identifier, {x:t.clientX,y:t.clientY}]));
       const x = this.chart?.scales?.x;
       if (x) {
