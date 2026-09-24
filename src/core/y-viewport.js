@@ -97,10 +97,9 @@ export class YViewport {
     const ratio = Math.max(0, Math.min(1, Number(anchorRatio) || 0));
     const anchor = a + ratio * span;
 
-    // Mantém a sensação do OChart histórico:
-    // arrastar para baixo fecha/aproxima; para cima abre/afasta.
-    // A intensidade é calculada no espaço transformado (inclusive no log).
-    const factor = Math.exp(-(Number(deltaPixels) / height) * 2.2);
+    // Arrastar para baixo abre a escala; para cima fecha.
+    // No log, o zoom acontece no espaço log e só depois volta para preço.
+    const factor = Math.exp((Number(deltaPixels) / height) * 2.2);
     let nextSpan = span * factor;
 
     const minSpan = this.isLog()
