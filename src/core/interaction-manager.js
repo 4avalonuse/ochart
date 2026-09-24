@@ -12,6 +12,33 @@ export class InteractionManager {
     this.handlers = null;
     this.pointers = new Map();
     this.owner = null; // 'chart' | 'drawing'
+    // 'auto' segue a ferramenta ativa; os demais modos são explícitos.
+    // Isso permite desligar navegação sem criar listeners concorrentes.
+    this.mode = 'auto';
+  }
+
+  setMode(mode = 'auto') {
+    const allowed = new Set(['auto', 'navigation', 'drawing', 'selection', 'none']);
+    this.mode = allowed.has(mode) ? mode : 'auto';
+
+    // Nunca troca o dono de um gesto já iniciado no meio da interação.
+    if (this.pointers.size === 0) {
+      this.owner = null;
+    }
+
+    return this.mode;
+  }
+
+  getMode() {
+    return this.mode;
+  }
+
+  enableNavigation() {
+    return this.setMode('navigation');
+  }
+
+  disableNavigation() {
+    return this.setMode('none');
   }
 
   attach() {
@@ -58,7 +85,7 @@ export class InteractionManager {
 
     this.pointers.set(ev.pointerId, ev);
 
-    // Uma ferramenta ativa ou um objeto selecionável ganha a interação.
+    // Uma ferramenta ativa ou um modo explícito ganha a interação.
     if (this.pointers.size === 1) {
       this.owner = this._resolveOwner(ev);
       this._capture(ev);
@@ -74,7 +101,9 @@ export class InteractionManager {
       return;
     }
 
-    this.engine.zoom.handlePointerDown(ev, active);
+    if (this.owner === 'chart') {
+      this.engine.zoom.handlePointerDown(ev, active);
+    }
   }
 
   onPointerMove(ev) {
@@ -137,6 +166,11 @@ export class InteractionManager {
   }
 
   _resolveOwner(ev) {
+    if (this.mode === 'none') return null;
+    if (this.mode === 'navigation') return 'chart';
+    if (this.mode === 'drawing') return 'drawing';
+    if (this.mode === 'selection') return 'drawing';
+
     const tool = this.drawingTools?.currentTool;
     if (!tool) return 'chart';
 
