@@ -1,4 +1,4 @@
-/**
+/** 
  * YViewport — matemática do viewport vertical do OChart.
  *
  * Linear e logarítmico não compartilham a mesma geometria:
@@ -90,11 +90,15 @@ export class YViewport {
 
     if (!Number.isFinite(span) || span <= 0) return range;
 
+    // anchorRatio é a posição do cursor dentro do eixo:
+    // 0 = topo (min), 1 = base (max).
+    // O cálculo anterior invertia essa relação, fazendo o zoom
+    // afastar-se do ponto sob o cursor — especialmente perceptível no log.
     const ratio = Math.max(0, Math.min(1, Number(anchorRatio) || 0));
-    const anchor = b - ratio * span;
+    const anchor = a + ratio * span;
 
-    // Mantém o comportamento intuitivo já usado no OChart:
-    // arrastar para baixo abre a escala; para cima fecha.
+    // Arrastar para baixo abre a escala; para cima fecha.
+    // No log, o zoom acontece no espaço log e só depois volta para preço.
     const factor = Math.exp((Number(deltaPixels) / height) * 2.2);
     let nextSpan = span * factor;
 
@@ -105,8 +109,8 @@ export class YViewport {
     const maxSpan = Math.max(span * 8, minSpan);
     nextSpan = Math.max(minSpan, Math.min(maxSpan, nextSpan));
 
-    const nextA = anchor - (1 - ratio) * nextSpan;
-    const nextB = anchor + ratio * nextSpan;
+    const nextA = anchor - ratio * nextSpan;
+    const nextB = anchor + (1 - ratio) * nextSpan;
 
     return this.normalizeRange(
       this.inverse(nextA),
