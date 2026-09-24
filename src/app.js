@@ -20,8 +20,6 @@ function boot() {
   const drawingTools = new DrawingTools(engine);
   drawingTools.init();
   const interactionManager = new InteractionManager(engine, drawingTools);
-  // API único para o restante da aplicação controlar o dono da interação.
-  engine.interaction = interactionManager;
   interactionManager.attach();
 
   const shell = document.querySelector('.chart-shell');
